@@ -1,0 +1,877 @@
+[
+  {
+    "name": "жим штанги лёжа",
+    "name_en": "barbell bench press",
+    "synonyms": ["жим лёжа", "жим штанги", "bench press", "горизонтальный жим"],
+    "muscle_groups": ["грудь", "трицепс", "плечи"],
+    "equipment": "штанга"
+  },
+  {
+    "name": "жим гантелей лёжа",
+    "name_en": "dumbbell bench press",
+    "synonyms": ["жим гантелей", "гантельный жим", "dumbbell press"],
+    "muscle_groups": ["грудь", "трицепс", "плечи"],
+    "equipment": "гантели"
+  },
+  {
+    "name": "жим штанги на наклонной скамье",
+    "name_en": "incline barbell bench press",
+    "synonyms": ["жим под углом", "наклонный жим", "incline press", "жим на наклонной"],
+    "muscle_groups": ["грудь", "плечи", "трицепс"],
+    "equipment": "штанга"
+  },
+  {
+    "name": "жим гантелей на наклонной скамье",
+    "name_en": "incline dumbbell press",
+    "synonyms": ["гантели под углом", "наклонный жим гантелей", "incline dumbbell press"],
+    "muscle_groups": ["грудь", "плечи", "трицепс"],
+    "equipment": "гантели"
+  },
+  {
+    "name": "жим в тренажёре сидя",
+    "name_en": "chest press machine",
+    "synonyms": ["жим в хаммере", "жим в машине", "chest press", "горизонтальный жим в тренажёре"],
+    "muscle_groups": ["грудь", "трицепс", "плечи"],
+    "equipment": "тренажёр"
+  },
+  {
+    "name": "разводка гантелей лёжа",
+    "name_en": "dumbbell fly",
+    "synonyms": ["разводка гантелей", "бабочка с гантелями", "flyes", "разводка на грудь"],
+    "muscle_groups": ["грудь", "плечи"],
+    "equipment": "гантели"
+  },
+  {
+    "name": "разводка в кроссовере",
+    "name_en": "cable crossover fly",
+    "synonyms": ["разводка на блоке", "кроссовер", "cable fly", "сведение рук в кроссовере"],
+    "muscle_groups": ["грудь"],
+    "equipment": "блок"
+  },
+  {
+    "name": "отжимания от пола",
+    "name_en": "push-ups",
+    "synonyms": ["отжимания", "push ups", "классические отжимания"],
+    "muscle_groups": ["грудь", "трицепс", "плечи"],
+    "equipment": "вес тела"
+  },
+  {
+    "name": "отжимания на брусьях",
+    "name_en": "dip",
+    "synonyms": ["брусья", "отжимания на брусьях на грудь", "dips", "дипы"],
+    "muscle_groups": ["грудь", "трицепс", "плечи"],
+    "equipment": "вес тела"
+  },
+  {
+    "name": "пуловер с гантелью",
+    "name_en": "dumbbell pullover",
+    "synonyms": ["пуловер", "pullover", "пуловер лёжа"],
+    "muscle_groups": ["грудь", "спина"],
+    "equipment": "гантели"
+  },
+  {
+    "name": "сведение рук в тренажёре",
+    "name_en": "pec deck machine",
+    "synonyms": ["бабочка", "пек-дек", "pec deck", "сведение в тренажёре"],
+    "muscle_groups": ["грудь"],
+    "equipment": "тренажёр"
+  },
+  {
+    "name": "подтягивания широким хватом",
+    "name_en": "wide grip pull-up",
+    "synonyms": ["подтягивания", "подтягивания на перекладине", "pull ups", "подтягивания широким хватом к груди"],
+    "muscle_groups": ["спина", "бицепс", "предплечья"],
+    "equipment": "вес тела"
+  },
+  {
+    "name": "подтягивания обратным хватом",
+    "name_en": "chin-up",
+    "synonyms": ["подтягивания обратным хватом", "чинапы", "chin ups", "подтягивания на бицепс"],
+    "muscle_groups": ["спина", "бицепс", "предплечья"],
+    "equipment": "вес тела"
+  },
+  {
+    "name": "тяга штанги в наклоне",
+    "name_en": "barbell row",
+    "synonyms": ["тяга в наклоне", "горизонтальная тяга штанги", "bent over row", "тяга к поясу"],
+    "muscle_groups": ["спина", "бицепс", "предплечья"],
+    "equipment": "штанга"
+  },
+  {
+    "name": "тяга гантели в наклоне одной рукой",
+    "name_en": "one-arm dumbbell row",
+    "synonyms": ["тяга гантели", "тяга одной рукой", "single arm row", "тяга в наклоне одной рукой"],
+    "muscle_groups": ["спина", "бицепс"],
+    "equipment": "гантели"
+  },
+  {
+    "name": "тяга верхнего блока к груди",
+    "name_en": "lat pulldown",
+    "synonyms": ["вертикальная тяга", "тяга блока за голову", "lat pulldown", "тяга к груди"],
+    "muscle_groups": ["спина", "бицепс"],
+    "equipment": "блок"
+  },
+  {
+    "name": "тяга горизонтального блока",
+    "name_en": "seated cable row",
+    "synonyms": ["горизонтальная тяга", "тяга к поясу в блоке", "cable row", "тяга нижнего блока"],
+    "muscle_groups": ["спина", "бицепс", "предплечья"],
+    "equipment": "блок"
+  },
+  {
+    "name": "становая тяга",
+    "name_en": "deadlift",
+    "synonyms": ["становая", "мёртвая тяга", "deadlift", "тяга"],
+    "muscle_groups": ["спина", "ноги", "ягодицы", "бицепс бедра"],
+    "equipment": "штанга"
+  },
+  {
+    "name": "румынская тяга",
+    "name_en": "romanian deadlift",
+    "synonyms": ["румынка", "RDL", "мёртвая тяга на прямых ногах", "румынская тяга со штангой"],
+    "muscle_groups": ["бицепс бедра", "ягодицы", "спина"],
+    "equipment": "штанга"
+  },
+  {
+    "name": "румынская тяга с гантелями",
+    "name_en": "romanian deadlift with dumbbells",
+    "synonyms": ["румынка с гантелями", "RDL с гантелями", "румынская тяга гантелей"],
+    "muscle_groups": ["бицепс бедра", "ягодицы", "спина"],
+    "equipment": "гантели"
+  },
+  {
+    "name": "гиперэкстензия",
+    "name_en": "hyperextension",
+    "synonyms": ["гиперэкстензия для спины", "разгибание спины", "back extension", "обратная гиперэкстензия для спины"],
+    "muscle_groups": ["спина", "ягодицы", "бицепс бедра"],
+    "equipment": "тренажёр"
+  },
+  {
+    "name": "тяга Т-грифа",
+    "name_en": "T-bar row",
+    "synonyms": ["тяга т-грифа", "тяга в тренажёре", "T-bar row", "горизонтальная тяга т-грифа"],
+    "muscle_groups": ["спина", "бицепс"],
+    "equipment": "тренажёр"
+  },
+  {
+    "name": "шраги со штангой",
+    "name_en": "barbell shrug",
+    "synonyms": ["шраги", "пожимания плечами", "shrugs", "трапеция со штангой"],
+    "muscle_groups": ["спина", "плечи"],
+    "equipment": "штанга"
+  },
+  {
+    "name": "шраги с гантелями",
+    "name_en": "dumbbell shrug",
+    "synonyms": ["шраги гантелями", "трапеция с гантелями", "dumbbell shrugs"],
+    "muscle_groups": ["спина", "плечи"],
+    "equipment": "гантели"
+  },
+  {
+    "name": "приседания со штангой",
+    "name_en": "barbell squat",
+    "synonyms": ["присед", "приседания", "squat", "базовый присед"],
+    "muscle_groups": ["квадрицепс", "ягодицы", "бицепс бедра", "спина"],
+    "equipment": "штанга"
+  },
+  {
+    "name": "приседания с гантелями",
+    "name_en": "goblet squat",
+    "synonyms": ["гоблет присед", "присед с гантелью", "goblet squat", "кубковый присед"],
+    "muscle_groups": ["квадрицепс", "ягодицы", "бицепс бедра"],
+    "equipment": "гантели"
+  },
+  {
+    "name": "фронтальные приседания",
+    "name_en": "front squat",
+    "synonyms": ["присед со штангой на груди", "фронтальный присед", "front squat"],
+    "muscle_groups": ["квадрицепс", "ягодицы", "спина"],
+    "equipment": "штанга"
+  },
+  {
+    "name": "жим ногами",
+    "name_en": "leg press",
+    "synonyms": ["жим ногами в тренажёре", "leg press", "платформа"],
+    "muscle_groups": ["квадрицепс", "ягодицы", "бицепс бедра"],
+    "equipment": "тренажёр"
+  },
+  {
+    "name": "выпады со штангой",
+    "name_en": "barbell lunge",
+    "synonyms": ["выпады", "выпады вперёд", "lunges", "выпады со штангой на спине"],
+    "muscle_groups": ["квадрицепс", "ягодицы", "бицепс бедра"],
+    "equipment": "штанга"
+  },
+  {
+    "name": "выпады с гантелями",
+    "name_en": "dumbbell lunge",
+    "synonyms": ["выпады с гантелями", "выпады вперёд с гантелями", "walking lunges"],
+    "muscle_groups": ["квадрицепс", "ягодицы", "бицепс бедра"],
+    "equipment": "гантели"
+  },
+  {
+    "name": "разгибание ног в тренажёре",
+    "name_en": "leg extension",
+    "synonyms": ["разгибания ног", "разгибание ног сидя", "leg extension", "квадрицепс в тренажёре"],
+    "muscle_groups": ["квадрицепс"],
+    "equipment": "тренажёр"
+  },
+  {
+    "name": "сгибание ног лёжа",
+    "name_en": "lying leg curl",
+    "synonyms": ["сгибание ног", "сгибание ног лёжа", "leg curl", "бицепс бедра в тренажёре"],
+    "muscle_groups": ["бицепс бедра"],
+    "equipment": "тренажёр"
+  },
+  {
+    "name": "сгибание ног сидя",
+    "name_en": "seated leg curl",
+    "synonyms": ["сгибание ног сидя", "leg curl сидя", "сгибание бицепса бедра"],
+    "muscle_groups": ["бицепс бедра"],
+    "equipment": "тренажёр"
+  },
+  {
+    "name": "ягодичный мостик со штангой",
+    "name_en": "hip thrust",
+    "synonyms": ["хип траст", "мостик со штангой", "hip thrust", "тазовый мост"],
+    "muscle_groups": ["ягодицы", "бицепс бедра"],
+    "equipment": "штанга"
+  },
+  {
+    "name": "махи ногой назад в кроссовере",
+    "name_en": "cable kickback",
+    "synonyms": ["махи назад", "разгибание бедра в блоке", "kickback", "ягодицы в блоке"],
+    "muscle_groups": ["ягодицы"],
+    "equipment": "блок"
+  },
+  {
+    "name": "подъёмы на носки стоя",
+    "name_en": "standing calf raise",
+    "synonyms": ["икры стоя", "подъёмы на икры", "calf raise", "подъём на носки в тренажёре"],
+    "muscle_groups": ["икры"],
+    "equipment": "тренажёр"
+  },
+  {
+    "name": "подъёмы на носки сидя",
+    "name_en": "seated calf raise",
+    "synonyms": ["икры сидя", "подъёмы на икры сидя", "seated calf raise"],
+    "muscle_groups": ["икры"],
+    "equipment": "тренажёр"
+  },
+  {
+    "name": "подъёмы на носки в тренажёре для жима ногами",
+    "name_en": "leg press calf raise",
+    "synonyms": ["икры в жиме ногами", "подъёмы на носки в платформе", "calf press"],
+    "muscle_groups": ["икры"],
+    "equipment": "тренажёр"
+  },
+  {
+    "name": "жим штанги стоя",
+    "name_en": "overhead press",
+    "synonyms": ["армейский жим", "жим стоя", "military press", "жим над головой"],
+    "muscle_groups": ["плечи", "трицепс", "грудь"],
+    "equipment": "штанга"
+  },
+  {
+    "name": "жим гантелей сидя",
+    "name_en": "dumbbell shoulder press",
+    "synonyms": ["жим гантелей стоя", "жим гантелей сидя", "dumbbell press", "жим плечи"],
+    "muscle_groups": ["плечи", "трицепс"],
+    "equipment": "гантели"
+  },
+  {
+    "name": "жим в тренажёре сидя (плечи)",
+    "name_en": "machine shoulder press",
+    "synonyms": ["жим в тренажёре плечи", "жим сидя в машине", "shoulder press machine"],
+    "muscle_groups": ["плечи", "трицепс"],
+    "equipment": "тренажёр"
+  },
+  {
+    "name": "махи гантелей в стороны",
+    "name_en": "lateral raise",
+    "synonyms": ["махи в стороны", "разводка на плечи", "lateral raise", "средняя дельта"],
+    "muscle_groups": ["плечи"],
+    "equipment": "гантели"
+  },
+  {
+    "name": "махи гантелей в стороны в наклоне",
+    "name_en": "reverse fly",
+    "synonyms": ["разводка в наклоне", "задняя дельта", "rear delt fly", "махи на заднюю дельту"],
+    "muscle_groups": ["плечи", "спина"],
+    "equipment": "гантели"
+  },
+  {
+    "name": "махи в кроссовере в стороны",
+    "name_en": "cable lateral raise",
+    "synonyms": ["махи в стороны в блоке", "разводка в кроссовере", "cable lateral raise"],
+    "muscle_groups": ["плечи"],
+    "equipment": "блок"
+  },
+  {
+    "name": "тяга штанги к подбородку",
+    "name_en": "barbell upright row",
+    "synonyms": ["протяжка", "тяга к подбородку", "upright row", "протяжка штанги"],
+    "muscle_groups": ["плечи", "трапеция", "бицепс"],
+    "equipment": "штанга"
+  },
+  {
+    "name": "тяга гантелей к подбородку",
+    "name_en": "dumbbell upright row",
+    "synonyms": ["протяжка гантелей", "тяга к подбородку гантелями", "upright row dumbbell"],
+    "muscle_groups": ["плечи", "трапеция", "бицепс"],
+    "equipment": "гантели"
+  },
+  {
+    "name": "подъём штанги на бицепс",
+    "name_en": "barbell curl",
+    "synonyms": ["подъём на бицепс", "сгибание рук со штангой", "bicep curl", "бицепс со штангой"],
+    "muscle_groups": ["бицепс", "предплечья"],
+    "equipment": "штанга"
+  },
+  {
+    "name": "подъём гантелей на бицепс",
+    "name_en": "dumbbell curl",
+    "synonyms": ["подъём гантелей на бицепс", "сгибание рук с гантелями", "dumbbell bicep curl"],
+    "muscle_groups": ["бицепс", "предплечья"],
+    "equipment": "гантели"
+  },
+  {
+    "name": "молотки",
+    "name_en": "hammer curl",
+    "synonyms": ["молотки с гантелями", "хаммер", "hammer curl", "подъём гантелей молотком"],
+    "muscle_groups": ["бицепс", "предплечья"],
+    "equipment": "гантели"
+  },
+  {
+    "name": "концентрированный подъём на бицепс",
+    "name_en": "concentration curl",
+    "synonyms": ["концентрат", "концентрированный подъём", "concentration curl"],
+    "muscle_groups": ["бицепс"],
+    "equipment": "гантели"
+  },
+  {
+    "name": "подъём на бицепс на скамье Скотта",
+    "name_en": "preacher curl",
+    "synonyms": ["скамья Скотта", "подъём на лавке Скотта", "preacher curl", "изолированный бицепс"],
+    "muscle_groups": ["бицепс"],
+    "equipment": "штанга"
+  },
+  {
+    "name": "сгибание рук на бицепс в блоке",
+    "name_en": "cable curl",
+    "synonyms": ["бицепс в блоке", "подъём на бицепс в кроссовере", "cable bicep curl"],
+    "muscle_groups": ["бицепс"],
+    "equipment": "блок"
+  },
+  {
+    "name": "французский жим со штангой лёжа",
+    "name_en": "lying tricep extension",
+    "synonyms": ["французский жим", "франц жим", "french press", "разгибание на трицепс лёжа"],
+    "muscle_groups": ["трицепс"],
+    "equipment": "штанга"
+  },
+  {
+    "name": "французский жим с гантелями",
+    "name_en": "dumbbell french press",
+    "synonyms": ["французский жим гантелями", "франц жим с гантелью", "skull crusher dumbbell"],
+    "muscle_groups": ["трицепс"],
+    "equipment": "гантели"
+  },
+  {
+    "name": "разгибание рук на блоке",
+    "name_en": "tricep pushdown",
+    "synonyms": ["трицепс на блоке", "разгибание в кроссовере", "pushdown", "разгибание рук в блоке"],
+    "muscle_groups": ["трицепс"],
+    "equipment": "блок"
+  },
+  {
+    "name": "разгибание руки с гантелью из-за головы",
+    "name_en": "dumbbell tricep extension",
+    "synonyms": ["разгибание на трицепс с гантелью", "трицепс одной рукой", "overhead extension"],
+    "muscle_groups": ["трицепс"],
+    "equipment": "гантели"
+  },
+  {
+    "name": "отжимания от пола с узкой постановкой рук",
+    "name_en": "diamond push-up",
+    "synonyms": ["алмазные отжимания", "отжимания узким хватом", "diamond push up", "трицепсовые отжимания"],
+    "muscle_groups": ["трицепс", "грудь"],
+    "equipment": "вес тела"
+  },
+  {
+    "name": "скручивания на полу",
+    "name_en": "crunch",
+    "synonyms": ["скручивания", "кранч", "crunch", "пресс лёжа"],
+    "muscle_groups": ["пресс"],
+    "equipment": "вес тела"
+  },
+  {
+    "name": "подъём ног в висе",
+    "name_en": "hanging leg raise",
+    "synonyms": ["подъём ног", "подъём ног на турнике", "hanging leg raise", "пресс в висе"],
+    "muscle_groups": ["пресс"],
+    "equipment": "вес тела"
+  },
+  {
+    "name": "планка",
+    "name_en": "plank",
+    "synonyms": ["планка на предплечьях", "классическая планка", "plank", "упор на локти"],
+    "muscle_groups": ["пресс", "спина", "плечи"],
+    "equipment": "вес тела"
+  },
+  {
+    "name": "велосипед",
+    "name_en": "bicycle crunch",
+    "synonyms": ["велосипед на пресс", "скручивание велосипед", "bicycle crunch"],
+    "muscle_groups": ["пресс"],
+    "equipment": "вес тела"
+  },
+  {
+    "name": "скручивания в тренажёре",
+    "name_en": "ab crunch machine",
+    "synonyms": ["пресс в тренажёре", "скручивания в машине", "ab machine"],
+    "muscle_groups": ["пресс"],
+    "equipment": "тренажёр"
+  },
+  {
+    "name": "подъём корпуса на наклонной скамье",
+    "name_en": "incline sit-up",
+    "synonyms": ["пресс на наклонной", "сит-ап", "sit up", "подъёмы на пресс на скамье"],
+    "muscle_groups": ["пресс"],
+    "equipment": "тренажёр"
+  },
+  {
+    "name": "русский твист",
+    "name_en": "russian twist",
+    "synonyms": ["русские скручивания", "твист", "russian twist", "скручивания с поворотом"],
+    "muscle_groups": ["пресс"],
+    "equipment": "вес тела"
+  },
+  {
+    "name": "жим штанги узким хватом",
+    "name_en": "close grip bench press",
+    "synonyms": ["жим узким хватом", "трицепсовый жим", "close grip press", "жим на трицепс"],
+    "muscle_groups": ["трицепс", "грудь"],
+    "equipment": "штанга"
+  },
+  {
+    "name": "разводка гантелей на наклонной скамье",
+    "name_en": "incline dumbbell fly",
+    "synonyms": ["разводка под углом", "наклонная разводка", "incline fly"],
+    "muscle_groups": ["грудь", "плечи"],
+    "equipment": "гантели"
+  },
+  {
+    "name": "отжимания от пола с широкой постановкой рук",
+    "name_en": "wide push-up",
+    "synonyms": ["широкие отжимания", "отжимания широким хватом", "wide push up"],
+    "muscle_groups": ["грудь", "трицепс", "плечи"],
+    "equipment": "вес тела"
+  },
+  {
+    "name": "подтягивания нейтральным хватом",
+    "name_en": "neutral grip pull-up",
+    "synonyms": ["подтягивания параллельным хватом", "подтягивания на ручках", "neutral pull up"],
+    "muscle_groups": ["спина", "бицепс"],
+    "equipment": "вес тела"
+  },
+  {
+    "name": "тяга верхнего блока за голову",
+    "name_en": "wide grip lat pulldown behind head",
+    "synonyms": ["вертикальная тяга за голову", "тяга за голову", "pull behind neck"],
+    "muscle_groups": ["спина", "плечи", "бицепс"],
+    "equipment": "блок"
+  },
+  {
+    "name": "тяга одной рукой в блоке",
+    "name_en": "single arm cable row",
+    "synonyms": ["горизонтальная тяга одной рукой", "тяга в блоке одной рукой", "one arm cable row"],
+    "muscle_groups": ["спина", "бицепс"],
+    "equipment": "блок"
+  },
+  {
+    "name": "становая тяга с гантелями",
+    "name_en": "dumbbell deadlift",
+    "synonyms": ["становая с гантелями", "мёртвая тяга с гантелями", "dumbbell deadlift"],
+    "muscle_groups": ["спина", "ноги", "ягодицы", "бицепс бедра"],
+    "equipment": "гантели"
+  },
+  {
+    "name": "сумо приседания",
+    "name_en": "sumo squat",
+    "synonyms": ["присед сумо", "приседания сумо", "sumo squat", "плие присед"],
+    "muscle_groups": ["квадрицепс", "ягодицы", "бицепс бедра"],
+    "equipment": "штанга"
+  },
+  {
+    "name": "болгарские выпады",
+    "name_en": "bulgarian split squat",
+    "synonyms": ["болгарский сплит-присед", "выпады на одной ноге", "bulgarian split squat", "болгарские приседания"],
+    "muscle_groups": ["квадрицепс", "ягодицы", "бицепс бедра"],
+    "equipment": "гантели"
+  },
+  {
+    "name": "зашагивание на тумбу",
+    "name_en": "box step-up",
+    "synonyms": ["зашагивания", "степ-ап", "step up", "зашагивание на платформу"],
+    "muscle_groups": ["квадрицепс", "ягодицы", "бицепс бедра"],
+    "equipment": "другое"
+  },
+  {
+    "name": "приседания в тренажёре Смита",
+    "name_en": "smith machine squat",
+    "synonyms": ["присед в Смите", "приседания в Смите", "smith squat"],
+    "muscle_groups": ["квадрицепс", "ягодицы", "бицепс бедра"],
+    "equipment": "тренажёр"
+  },
+  {
+    "name": "жим ногами одной ногой",
+    "name_en": "single leg press",
+    "synonyms": ["жим одной ногой", "одноножный жим", "single leg press"],
+    "muscle_groups": ["квадрицепс", "ягодицы", "бицепс бедра"],
+    "equipment": "тренажёр"
+  },
+  {
+    "name": "сведение ног в тренажёре",
+    "name_en": "hip adductor machine",
+    "synonyms": ["приведение бедра", "внутренняя поверхность бедра", "adductor machine", "сведение бедра"],
+    "muscle_groups": ["ноги", "ягодицы"],
+    "equipment": "тренажёр"
+  },
+  {
+    "name": "разведение ног в тренажёре",
+    "name_en": "hip abductor machine",
+    "synonyms": ["отведение бедра", "внешняя поверхность бедра", "abductor machine", "разведение бедра"],
+    "muscle_groups": ["ягодицы", "ноги"],
+    "equipment": "тренажёр"
+  },
+  {
+    "name": "подъём на носки с гантелями стоя",
+    "name_en": "standing dumbbell calf raise",
+    "synonyms": ["икры с гантелями", "подъёмы на носки с гантелями", "dumbbell calf raise"],
+    "muscle_groups": ["икры"],
+    "equipment": "гантели"
+  },
+  {
+    "name": "жим Арнольда",
+    "name_en": "arnold press",
+    "synonyms": ["арнольд", "жим Арнольда сидя", "arnold press", "арнольдовский жим"],
+    "muscle_groups": ["плечи", "трицепс"],
+    "equipment": "гантели"
+  },
+  {
+    "name": "махи в стороны в наклоне в блоке",
+    "name_en": "cable reverse fly",
+    "synonyms": ["задняя дельта в блоке", "разводка в кроссовере на заднюю дельту", "cable rear delt"],
+    "muscle_groups": ["плечи", "спина"],
+    "equipment": "блок"
+  },
+  {
+    "name": "подъём гантелей перед собой",
+    "name_en": "front raise",
+    "synonyms": ["махи перед собой", "передняя дельта", "front raise", "подъём гантелей вперёд"],
+    "muscle_groups": ["плечи"],
+    "equipment": "гантели"
+  },
+  {
+    "name": "подъём штанги перед собой",
+    "name_en": "barbell front raise",
+    "synonyms": ["махи штангой перед собой", "front raise со штангой", "подъём штанги вперёд"],
+    "muscle_groups": ["плечи"],
+    "equipment": "штанга"
+  },
+  {
+    "name": "подъём EZ-штанги на бицепс",
+    "name_en": "ez bar curl",
+    "synonyms": ["подъём на бицепс EZ-грифом", "сгибание с EZ-штангой", "ez bar bicep curl"],
+    "muscle_groups": ["бицепс", "предплечья"],
+    "equipment": "штанга"
+  },
+  {
+    "name": "подъём на бицепс на наклонной скамье",
+    "name_en": "incline dumbbell curl",
+    "synonyms": ["подъём гантелей на наклонной", "бицепс на наклонной скамье", "incline curl"],
+    "muscle_groups": ["бицепс"],
+    "equipment": "гантели"
+  },
+  {
+    "name": "сгибание запястий со штангой",
+    "name_en": "wrist curl",
+    "synonyms": ["сгибание кистей", "предплечья со штангой", "wrist curl", "кисти со штангой"],
+    "muscle_groups": ["предплечья"],
+    "equipment": "штанга"
+  },
+  {
+    "name": "разгибание запястий со штангой",
+    "name_en": "reverse wrist curl",
+    "synonyms": ["разгибание кистей", "обратное сгибание запястий", "reverse wrist curl"],
+    "muscle_groups": ["предплечья"],
+    "equipment": "штанга"
+  },
+  {
+    "name": "французский жим в блоке",
+    "name_en": "cable tricep extension",
+    "synonyms": ["французский жим в кроссовере", "разгибание на трицепс в блоке из-за головы", "cable overhead extension"],
+    "muscle_groups": ["трицепс"],
+    "equipment": "блок"
+  },
+  {
+    "name": "отжимания на брусьях на трицепс",
+    "name_en": "tricep dip",
+    "synonyms": ["брусья на трицепс", "отжимания на брусьях узко", "tricep dips", "дипы на трицепс"],
+    "muscle_groups": ["трицепс", "грудь"],
+    "equipment": "вес тела"
+  },
+  {
+    "name": "скручивания с поворотом в кроссовере",
+    "name_en": "cable crunch",
+    "synonyms": ["пресс в кроссовере", "скручивания в блоке", "cable crunch", "пресс на блоке"],
+    "muscle_groups": ["пресс"],
+    "equipment": "блок"
+  },
+  {
+    "name": "боковая планка",
+    "name_en": "side plank",
+    "synonyms": ["планка на боку", "боковая планка", "side plank", "планка на одной руке"],
+    "muscle_groups": ["пресс", "косые мышцы"],
+    "equipment": "вес тела"
+  },
+  {
+    "name": "подъём корпуса лёжа",
+    "name_en": "lying leg raise",
+    "synonyms": ["подъём ног лёжа", "подъёмы ног на скамье", "lying leg raise", "нижний пресс лёжа"],
+    "muscle_groups": ["пресс"],
+    "equipment": "вес тела"
+  },
+  {
+    "name": "жим штанги с груди сидя",
+    "name_en": "seated barbell shoulder press",
+    "synonyms": ["жим сидя со штангой", "армейский жим сидя", "seated overhead press"],
+    "muscle_groups": ["плечи", "трицепс"],
+    "equipment": "штанга"
+  },
+  {
+    "name": "тяга верхнего блока прямыми руками",
+    "name_en": "straight arm pulldown",
+    "synonyms": ["пуловер в блоке", "разгибание рук в блоке на спину", "straight arm lat pulldown"],
+    "muscle_groups": ["спина", "грудь"],
+    "equipment": "блок"
+  },
+  {
+    "name": "пулловер в блоке",
+    "name_en": "cable pullover",
+    "synonyms": ["пуловер в кроссовере", "пуловер на блоке", "cable pullover"],
+    "muscle_groups": ["спина", "грудь"],
+    "equipment": "блок"
+  },
+  {
+    "name": "подтягивания в гравитроне",
+    "name_en": "assisted pull-up",
+    "synonyms": ["подтягивания с противовесом", "гравитрон", "assisted pull up", "подтягивания с поддержкой"],
+    "muscle_groups": ["спина", "бицепс"],
+    "equipment": "тренажёр"
+  },
+  {
+    "name": "отжимания в гравитроне",
+    "name_en": "assisted dip",
+    "synonyms": ["брусья с противовесом", "отжимания на брусьях с поддержкой", "assisted dip"],
+    "muscle_groups": ["грудь", "трицепс", "плечи"],
+    "equipment": "тренажёр"
+  },
+  {
+    "name": "приседания с гирей",
+    "name_en": "kettlebell goblet squat",
+    "synonyms": ["гоблет с гирей", "присед с гирей", "kettlebell squat"],
+    "muscle_groups": ["квадрицепс", "ягодицы", "бицепс бедра"],
+    "equipment": "другое"
+  },
+  {
+    "name": "махи гирей",
+    "name_en": "kettlebell swing",
+    "synonyms": ["свинг гирей", "махи гири", "kettlebell swing", "качели с гирей"],
+    "muscle_groups": ["ягодицы", "бицепс бедра", "спина"],
+    "equipment": "другое"
+  },
+  {
+    "name": "румынская тяга с гирей",
+    "name_en": "kettlebell romanian deadlift",
+    "synonyms": ["румынка с гирей", "RDL с гирей", "kettlebell RDL"],
+    "muscle_groups": ["бицепс бедра", "ягодицы", "спина"],
+    "equipment": "другое"
+  },
+  {
+    "name": "жим гири",
+    "name_en": "kettlebell press",
+    "synonyms": ["жим гири одной рукой", "жим гири стоя", "kettlebell shoulder press"],
+    "muscle_groups": ["плечи", "трицепс"],
+    "equipment": "другое"
+  },
+  {
+    "name": "тяга гири к поясу",
+    "name_en": "kettlebell row",
+    "synonyms": ["тяга гири одной рукой", "тяга гири в наклоне", "kettlebell row"],
+    "muscle_groups": ["спина", "бицепс"],
+    "equipment": "другое"
+  },
+  {
+    "name": "жим штанги лёжа в тренажёре Смита",
+    "name_en": "smith machine bench press",
+    "synonyms": ["жим в Смите", "жим лёжа в Смите", "smith bench press"],
+    "muscle_groups": ["грудь", "трицепс", "плечи"],
+    "equipment": "тренажёр"
+  },
+  {
+    "name": "разгибание рук с канатной рукоятью",
+    "name_en": "rope pushdown",
+    "synonyms": ["трицепс на канате", "разгибание с канатом", "rope tricep pushdown"],
+    "muscle_groups": ["трицепс"],
+    "equipment": "блок"
+  },
+  {
+    "name": "тяга нижнего блока к поясу широким хватом",
+    "name_en": "wide grip cable row",
+    "synonyms": ["горизонтальная тяга широким хватом", "тяга широким хватом в блоке", "wide grip row"],
+    "muscle_groups": ["спина", "бицепс"],
+    "equipment": "блок"
+  },
+  {
+    "name": "подъём гантелей на бицепс на наклонной скамье лёжа",
+    "name_en": "incline dumbbell curl lying",
+    "synonyms": ["бицепс лёжа на наклонной", "подъём гантелей лёжа под углом", "incline lying curl"],
+    "muscle_groups": ["бицепс"],
+    "equipment": "гантели"
+  },
+  {
+    "name": "обратные отжимания от скамьи",
+    "name_en": "bench dip",
+    "synonyms": ["отжимания от скамьи сзади", "обратные отжимания", "bench dip", "трицепс от скамьи"],
+    "muscle_groups": ["трицепс", "плечи"],
+    "equipment": "вес тела"
+  },
+  {
+    "name": "протяжка в блоке",
+    "name_en": "cable upright row",
+    "synonyms": ["тяга к подбородку в блоке", "протяжка в кроссовере", "cable upright row"],
+    "muscle_groups": ["плечи", "трапеция", "бицепс"],
+    "equipment": "блок"
+  },
+  {
+    "name": "жим в хаммере на грудь",
+    "name_en": "hammer strength chest press",
+    "synonyms": ["жим в хаммере", "хаммер на грудь", "lever chest press"],
+    "muscle_groups": ["грудь", "трицепс", "плечи"],
+    "equipment": "тренажёр"
+  },
+  {
+    "name": "тяга в хаммере",
+    "name_en": "hammer strength row",
+    "synonyms": ["тяга в хаммере на спину", "хаммер на спину", "lever row"],
+    "muscle_groups": ["спина", "бицепс"],
+    "equipment": "тренажёр"
+  },
+  {
+    "name": "приседания с прыжком",
+    "name_en": "jump squat",
+    "synonyms": ["прыжковые приседания", "присед с выпрыгиванием", "jump squat"],
+    "muscle_groups": ["квадрицепс", "ягодицы", "икры"],
+    "equipment": "вес тела"
+  },
+  {
+    "name": "берпи",
+    "name_en": "burpee",
+    "synonyms": ["бурпи", "burpee", "упражнение бурпи"],
+    "muscle_groups": ["ноги", "грудь", "плечи", "пресс"],
+    "equipment": "вес тела"
+  },
+  {
+    "name": "подъём ног в упоре на брусьях",
+    "name_en": "L-sit leg raise",
+    "synonyms": ["уголок на брусьях", "подъём ног на брусьях", "L-sit", "уголок"],
+    "muscle_groups": ["пресс", "руки"],
+    "equipment": "вес тела"
+  },
+  {
+    "name": "скручивания с роликом",
+    "name_en": "ab wheel rollout",
+    "synonyms": ["ролик для пресса", "каток для пресса", "ab wheel", "скручивания на ролике"],
+    "muscle_groups": ["пресс", "спина"],
+    "equipment": "другое"
+  },
+  {
+    "name": "становая тяга в стиле сумо",
+    "name_en": "sumo deadlift",
+    "synonyms": ["становая сумо", "сумо тяга", "sumo deadlift", "становая с широкой постановкой"],
+    "muscle_groups": ["спина", "ноги", "ягодицы", "бицепс бедра"],
+    "equipment": "штанга"
+  },
+  {
+    "name": "тяга рывковая",
+    "name_en": "power clean",
+    "synonyms": ["взятие на грудь", "силовой подъём", "power clean", "тяга до подбородка"],
+    "muscle_groups": ["ноги", "спина", "плечи", "предплечья"],
+    "equipment": "штанга"
+  },
+  {
+    "name": "трастеры со штангой",
+    "name_en": "thruster",
+    "synonyms": ["трастер", "присед с жимом", "thruster", "трастеры"],
+    "muscle_groups": ["ноги", "плечи", "трицепс"],
+    "equipment": "штанга"
+  },
+  {
+    "name": "подъём штанги на бицепс обратным хватом",
+    "name_en": "reverse grip barbell curl",
+    "synonyms": ["бицепс обратным хватом", "подъём обратным хватом", "reverse curl"],
+    "muscle_groups": ["бицепс", "предплечья"],
+    "equipment": "штанга"
+  },
+  {
+    "name": "жим гантелей нейтральным хватом",
+    "name_en": "neutral grip dumbbell press",
+    "synonyms": ["жим гантелей молотковым хватом", "жим гантелей ладонями друг к другу", "neutral press"],
+    "muscle_groups": ["грудь", "трицепс", "плечи"],
+    "equipment": "гантели"
+  },
+  {
+    "name": "отжимания с упором ног на возвышение",
+    "name_en": "decline push-up",
+    "synonyms": ["отжимания ноги выше головы", "отжимания с наклоном", "decline push up", "отжимания в наклоне"],
+    "muscle_groups": ["грудь", "трицепс", "плечи"],
+    "equipment": "вес тела"
+  },
+  {
+    "name": "отжимания с упором рук на возвышение",
+    "name_en": "incline push-up",
+    "synonyms": ["отжимания с рук на скамье", "облегчённые отжимания", "incline push up"],
+    "muscle_groups": ["грудь", "трицепс", "плечи"],
+    "equipment": "вес тела"
+  },
+  {
+    "name": "подъём коленей в висе",
+    "name_en": "hanging knee raise",
+    "synonyms": ["подъём коленей на турнике", "колени к груди в висе", "hanging knee raise"],
+    "muscle_groups": ["пресс"],
+    "equipment": "вес тела"
+  },
+  {
+    "name": "махи ногой в сторону с резиной",
+    "name_en": "lateral band walk",
+    "synonyms": ["шаги в сторону с резиной", "ходьба с резинкой", "lateral band walk", "приведение с резиной"],
+    "muscle_groups": ["ягодицы", "ноги"],
+    "equipment": "другое"
+  },
+  {
+    "name": "ягодичный мостик с резиной",
+    "name_en": "glute bridge with band",
+    "synonyms": ["мостик с резинкой", "ягодичный мостик лёжа", "glute bridge", "мостик на ягодицы"],
+    "muscle_groups": ["ягодицы", "бицепс бедра"],
+    "equipment": "другое"
+  },
+  {
+    "name": "разгибание спины в римском стуле",
+    "name_en": "roman chair back extension",
+    "synonyms": ["гиперэкстензия в римском стуле", "разгибание корпуса", "roman chair"],
+    "muscle_groups": ["спина", "ягодицы", "бицепс бедра"],
+    "equipment": "тренажёр"
+  }
+]
