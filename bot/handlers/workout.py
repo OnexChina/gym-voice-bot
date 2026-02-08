@@ -5,7 +5,7 @@ import logging
 from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from aiogram.types import CallbackQuery, Message
+from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
 from bot.database.engine import get_session
 from bot.database.crud import (
@@ -133,7 +133,7 @@ async def on_program_selected(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
 
-# ----- Голос во время тренировки -----
+# ----- Голос во время тренировки (регистрировать раньше F.voice без состояния) -----
 
 
 @router.message(F.voice, WorkoutStates.active)
@@ -171,6 +171,72 @@ async def handle_voice_during_workout(message: Message, state: FSMContext):
     await _process_parsed_workout(
         message, state, parsed, workout_id, message.from_user.id
     )
+
+
+# ----- Голос вне тренировки (предложить начать) -----
+
+
+@router.message(F.voice)
+async def handle_voice_no_workout(message: Message, state: FSMContext):
+    """Голосовое сообщение вне тренировки: предложить начать тренировку."""
+    await state.update_data(pending_voice=message.voice.file_id)
+    await message.answer(
+        "🎤 Получил голосовое сообщение!\n\nНачнём тренировку?",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="✅ Да", callback_data="start_workout_from_voice")],
+            [InlineKeyboardButton(text="❌ Нет", callback_data="voice_cancel")],
+        ]),
+    )
+
+
+@router.callback_query(F.data == "start_workout_from_voice")
+async def on_start_workout_from_voice(callback: CallbackQuery, state: FSMContext):
+    """Пользователь нажал «Да»: создаём тренировку и обрабатываем сохранённое голосовое."""
+    data = await state.get_data()
+    file_id = data.get("pending_voice")
+    await state.update_data(pending_voice=None)
+
+    if not file_id:
+        await callback.message.edit_text("Голосовое сообщение уже обработано или устарело. Начни тренировку через меню.")
+        await callback.answer()
+        return
+
+    async with get_session() as session:
+        user = await get_or_create_user(session, callback.from_user.id, callback.from_user.username)
+        workout = await create_workout(session, user.telegram_id, program_id=None)
+
+    await state.update_data(workout={"id": workout.id, "date": str(workout.date)})
+    await state.set_state(WorkoutStates.active)
+    await callback.message.edit_text("Тренировка начата. Обрабатываю твоё голосовое...")
+    await callback.message.answer("Меню тренировки:", reply_markup=workout_menu())
+    await callback.answer()
+
+    await callback.message.answer("🎤 Слушаю...")
+    text = await transcribe_voice(file_id, settings.telegram_bot_token)
+    if not text:
+        await callback.message.answer("❌ Не смог распознать. Попробуй ещё раз или напиши текстом.")
+        return
+    await callback.message.answer(f"📝 Распознал: {text}")
+
+    workout_data = await state.get_data()
+    current_workout = workout_data.get("workout") or {}
+    parsed = await parse_workout_message(
+        text=text,
+        user_id=callback.from_user.id,
+        current_workout=current_workout,
+        exercises_db=await _exercises_db_with_ids(),
+    )
+    await _process_parsed_workout(
+        callback.message, state, parsed, workout.id, callback.from_user.id
+    )
+
+
+@router.callback_query(F.data == "voice_cancel")
+async def on_voice_cancel(callback: CallbackQuery, state: FSMContext):
+    """Пользователь нажал «Нет» — не начинаем тренировку."""
+    await state.update_data(pending_voice=None)
+    await callback.message.edit_text("Ок, не начинаем. Когда захочешь — нажми «🏋️ Начать тренировку» в меню.")
+    await callback.answer()
 
 
 # ----- Завершение и отмена (регистрировать до общего F.text) -----
