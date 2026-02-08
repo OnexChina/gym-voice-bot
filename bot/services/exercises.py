@@ -89,6 +89,7 @@ async def search_exercise(query: str, exercises: Optional[List[Dict]] = None) ->
 
 def load_exercises_sync() -> List[Dict]:
     """Синхронная загрузка (для кода без async)."""
+    global _exercises_cache
     import asyncio
     try:
         loop = asyncio.get_running_loop()
@@ -107,11 +108,11 @@ def normalize_exercise_name(name: str) -> str:
 
 def find_exercise_suggestions(query: str, limit: int = 5) -> List[str]:
     """Возвращает подсказки по названиям упражнений из базы (синхронно, использует кеш)."""
+    global _exercises_cache
     if _exercises_cache is None and EXERCISES_FILE.exists():
         try:
             with open(EXERCISES_FILE, "r", encoding="utf-8") as f:
                 data = json.load(f)
-            global _exercises_cache
             _exercises_cache = data if isinstance(data, list) else []
         except Exception:
             _exercises_cache = []
