@@ -23,17 +23,20 @@ from bot.database.models import (
 # ============= USERS =============
 
 
-async def get_or_create_user(telegram_id: int, username: Optional[str] = None) -> User:
+async def get_or_create_user(
+    session: AsyncSession,
+    telegram_id: int,
+    username: Optional[str] = None,
+) -> User:
     """Получает пользователя или создаёт, если не существует. Возвращает объект User."""
-    async with get_session() as session:
-        result = await session.execute(select(User).where(User.telegram_id == telegram_id))
-        user = result.scalar_one_or_none()
-        if user is None:
-            user = User(telegram_id=telegram_id, username=username)
-            session.add(user)
-            await session.flush()
-            await session.refresh(user)
-        return user
+    result = await session.execute(select(User).where(User.telegram_id == telegram_id))
+    user = result.scalar_one_or_none()
+    if user is None:
+        user = User(telegram_id=telegram_id, username=username)
+        session.add(user)
+        await session.flush()
+        await session.refresh(user)
+    return user
 
 
 async def update_user_settings(telegram_id: int, settings: dict) -> User:
@@ -125,27 +128,30 @@ async def search_exercises_in_db(query: str, user_id: Optional[int] = None) -> l
 # ============= PROGRAMS =============
 
 
-async def create_program(user_id: int, name: str, exercise_ids: list[int]) -> Program:
+async def create_program(
+    session: AsyncSession,
+    user_id: int,
+    name: str,
+    exercise_ids: list[int],
+) -> Program:
     """
     Создаёт программу тренировок.
     exercise_ids сохраняется в JSONB как [{"exercise_id": 1, "order": 1}, ...]
     """
-    async with get_session() as session:
-        exercises_json = [{"exercise_id": eid, "order": i + 1} for i, eid in enumerate(exercise_ids)]
-        program = Program(user_id=user_id, name=name, exercises=exercises_json)
-        session.add(program)
-        await session.flush()
-        await session.refresh(program)
-        return program
+    exercises_json = [{"exercise_id": eid, "order": i + 1} for i, eid in enumerate(exercise_ids)]
+    program = Program(user_id=user_id, name=name, exercises=exercises_json)
+    session.add(program)
+    await session.flush()
+    await session.refresh(program)
+    return program
 
 
-async def get_user_programs(user_id: int) -> list[Program]:
+async def get_user_programs(session: AsyncSession, user_id: int) -> list[Program]:
     """Получает все программы пользователя."""
-    async with get_session() as session:
-        result = await session.execute(
-            select(Program).where(Program.user_id == user_id).order_by(Program.created_at.desc())
-        )
-        return list(result.scalars().all())
+    result = await session.execute(
+        select(Program).where(Program.user_id == user_id).order_by(Program.created_at.desc())
+    )
+    return list(result.scalars().all())
 
 
 async def get_program_by_id(program_id: int) -> Optional[Program]:
@@ -165,22 +171,22 @@ async def delete_program(program_id: int) -> None:
 
 
 async def create_workout(
+    session: AsyncSession,
     user_id: int,
     program_id: Optional[int] = None,
     comment: Optional[str] = None,
 ) -> Workout:
     """Создаёт новую тренировку с датой = сегодня. Возвращает объект Workout."""
-    async with get_session() as session:
-        workout = Workout(
-            user_id=user_id,
-            date=date.today(),
-            program_id=program_id,
-            comment=comment,
-        )
-        session.add(workout)
-        await session.flush()
-        await session.refresh(workout)
-        return workout
+    workout = Workout(
+        user_id=user_id,
+        date=date.today(),
+        program_id=program_id,
+        comment=comment,
+    )
+    session.add(workout)
+    await session.flush()
+    await session.refresh(workout)
+    return workout
 
 
 async def get_current_workout(user_id: int) -> Optional[Workout]:
@@ -237,23 +243,22 @@ async def delete_workout(workout_id: int) -> None:
         await session.execute(delete(Workout).where(Workout.id == workout_id))
 
 
-async def get_workout_summary(workout_id: int) -> dict:
+async def get_workout_summary(session: AsyncSession, workout_id: int) -> dict:
     """Возвращает сводку по тренировке: date, exercises_count, sets_count, total_volume_kg."""
-    async with get_session() as session:
-        result = await session.execute(
-            select(Workout)
-            .where(Workout.id == workout_id)
-            .options(selectinload(Workout.workout_exercises).selectinload(WorkoutExercise.sets))
-        )
-        workout = result.scalar_one_or_none()
-        if not workout:
-            return {"date": None, "exercises_count": 0, "sets_count": 0, "total_volume_kg": 0}
-        return {
-            "date": workout.date,
-            "exercises_count": len(workout.workout_exercises),
-            "sets_count": sum(len(we.sets) for we in workout.workout_exercises),
-            "total_volume_kg": float(sum((we.volume_kg or Decimal("0")) for we in workout.workout_exercises)),
-        }
+    result = await session.execute(
+        select(Workout)
+        .where(Workout.id == workout_id)
+        .options(selectinload(Workout.workout_exercises).selectinload(WorkoutExercise.sets))
+    )
+    workout = result.scalar_one_or_none()
+    if not workout:
+        return {"date": None, "exercises_count": 0, "sets_count": 0, "total_volume_kg": 0}
+    return {
+        "date": workout.date,
+        "exercises_count": len(workout.workout_exercises),
+        "sets_count": sum(len(we.sets) for we in workout.workout_exercises),
+        "total_volume_kg": float(sum((we.volume_kg or Decimal("0")) for we in workout.workout_exercises)),
+    }
 
 
 async def get_user_workouts(
@@ -289,6 +294,7 @@ async def get_user_workouts(
 
 
 async def add_workout_sets(
+    session: AsyncSession,
     workout_id: int,
     sets: list[dict],
     user_id: Optional[int] = None,
@@ -297,8 +303,7 @@ async def add_workout_sets(
     Добавляет подходы: список dict с exercise_name, reps?, weight_kg?.
     Группирует по упражнению, создаёт Exercise при необходимости.
     """
-    async with get_session() as session:
-        await add_workout_sets_with_session(session, workout_id, sets, user_id)
+    await add_workout_sets_with_session(session, workout_id, sets, user_id)
 
 
 async def add_workout_exercise(
@@ -599,7 +604,7 @@ async def get_week_comparison(user_id: int) -> dict:
     end_pw = start_cw - timedelta(days=1)
 
     async with get_session() as session:
-        def _week_stats(start: date, end: date) -> dict:
+        async def _week_stats(start: date, end: date) -> dict:
             stmt = (
                 select(Workout)
                 .where(
@@ -619,8 +624,8 @@ async def get_week_comparison(user_id: int) -> dict:
                 "exercises_count": ex_count,
             }
 
-        current_week = _week_stats(start_cw, end_cw)
-        previous_week = _week_stats(start_pw, end_pw)
+        current_week = await _week_stats(start_cw, end_cw)
+        previous_week = await _week_stats(start_pw, end_pw)
 
     prev_vol = previous_week["total_volume_kg"] or 0
     curr_vol = current_week["total_volume_kg"] or 0

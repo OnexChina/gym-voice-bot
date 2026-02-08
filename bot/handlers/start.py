@@ -4,6 +4,7 @@ from aiogram import Router, F
 from aiogram.filters import CommandStart
 from aiogram.types import Message
 
+from bot.database.engine import get_session
 from bot.database.crud import get_or_create_user, get_user_programs
 from bot.keyboards.menu import main_menu, program_selection
 
@@ -18,7 +19,8 @@ async def cmd_start(message: Message):
     - Показывает приветствие
     - Выводит главное меню
     """
-    await get_or_create_user(message.from_user.id, message.from_user.username)
+    async with get_session() as session:
+        await get_or_create_user(session, message.from_user.id, message.from_user.username)
 
     welcome_text = f"""
 👋 Привет, {message.from_user.first_name}!
@@ -42,8 +44,9 @@ async def start_workout(message: Message):
     Начало новой тренировки
     - Показывает выбор программы или freestyle
     """
-    await get_or_create_user(message.from_user.id, message.from_user.username)
-    programs = await get_user_programs(message.from_user.id)
+    async with get_session() as session:
+        await get_or_create_user(session, message.from_user.id, message.from_user.username)
+        programs = await get_user_programs(session, message.from_user.id)
 
     program_list = [{"id": p.id, "name": p.name} for p in programs]
     await message.answer(

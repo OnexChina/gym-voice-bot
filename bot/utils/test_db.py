@@ -1,7 +1,7 @@
 """Тест подключения к БД."""
 
 import asyncio
-from bot.database.engine import init_db
+from bot.database.engine import init_db, get_session
 from bot.database.crud import get_or_create_user
 
 
@@ -11,7 +11,8 @@ async def test():
     print("✅ БД инициализирована")
 
     print("\n🧪 Тест создания пользователя...")
-    user = await get_or_create_user(12345, "test_user")
+    async with get_session() as session:
+        user = await get_or_create_user(session, 12345, "test_user")
     print(f"✅ Пользователь создан: {user.telegram_id}")
 
     print("\n🎉 Всё работает!")

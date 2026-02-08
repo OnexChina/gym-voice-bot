@@ -7,6 +7,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, Message
 
+from bot.database.engine import get_session
 from bot.database.crud import (
     add_workout_sets,
     create_workout,
@@ -78,7 +79,8 @@ async def _process_parsed_workout(
                 "weight_kg": w,
             })
 
-        await add_workout_sets(workout_id, flat_sets, user_id=user_id)
+        async with get_session() as session:
+            await add_workout_sets(session, workout_id, flat_sets, user_id=user_id)
 
         volume = 0.0
         for s in sets_list:
@@ -120,8 +122,9 @@ async def on_program_selected(callback: CallbackQuery, state: FSMContext):
         except ValueError:
             program_id = None
 
-    user = await get_or_create_user(callback.from_user.id, callback.from_user.username)
-    workout = await create_workout(user.telegram_id, program_id=program_id)
+    async with get_session() as session:
+        user = await get_or_create_user(session, callback.from_user.id, callback.from_user.username)
+        workout = await create_workout(session, user.telegram_id, program_id=program_id)
 
     await state.update_data(workout={"id": workout.id, "date": str(workout.date)})
     await state.set_state(WorkoutStates.active)
@@ -189,7 +192,8 @@ async def finish_workout(message: Message, state: FSMContext):
         await state.clear()
         return
 
-    summary = await get_workout_summary(workout_id)
+    async with get_session() as session:
+        summary = await get_workout_summary(session, workout_id)
 
     date_str = summary["date"].strftime("%d.%m.%Y") if summary.get("date") else "—"
     result = f"""

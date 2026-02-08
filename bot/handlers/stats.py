@@ -4,6 +4,7 @@ from aiogram import Router
 from aiogram.types import Message
 from aiogram.filters import Command
 
+from bot.database.engine import get_session
 from bot.database.crud import get_or_create_user, get_user_workouts
 from bot.services.analytics import get_volume_stats, get_pr_stats
 
@@ -13,7 +14,8 @@ router = Router()
 @router.message(Command("stats"))
 @router.message(F.text == "📊 Статистика")
 async def cmd_stats(message: Message) -> None:
-    await get_or_create_user(message.from_user.id, message.from_user.username)
+    async with get_session() as session:
+        await get_or_create_user(session, message.from_user.id, message.from_user.username)
     workouts = await get_user_workouts(message.from_user.id, limit=30)
     if not workouts:
         await message.answer("Пока нет тренировок. Начните логировать — голосом или текстом.")
