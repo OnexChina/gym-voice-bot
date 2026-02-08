@@ -10,11 +10,21 @@ from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMar
 from bot.database.engine import get_session
 from bot.database.crud import (
     add_workout_sets,
+    check_and_save_records,
     create_workout,
+    delete_last_workout_exercise,
+    delete_workout,
     get_or_create_user,
     get_workout_summary,
 )
-from bot.keyboards.menu import confirm_exercise, exercise_alternatives, workout_menu
+from bot.keyboards.menu import (
+    confirm_exercise,
+    exercise_alternatives,
+    main_menu,
+    workout_menu,
+    workout_inline_buttons,
+)
+from bot.services.analytics import format_workout_summary
 from bot.services.exercises import load_exercises
 from bot.services.nlp import match_exercise, parse_workout_message
 from bot.config import settings
@@ -239,50 +249,121 @@ async def on_voice_cancel(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
 
+# ----- Подтверждение / удаление / исправление записанного упражнения -----
+
+
+@router.callback_query(F.data == "confirm_exercise")
+async def on_confirm_exercise(callback: CallbackQuery):
+    """Пользователь подтвердил — закрыть сообщение."""
+    await callback.message.delete()
+    await callback.answer("✅ Записано!")
+
+
+@router.callback_query(F.data == "delete_last_exercise")
+async def on_delete_last_exercise(callback: CallbackQuery, state: FSMContext):
+    """Удалить последнее добавленное упражнение из тренировки."""
+    workout_data = await state.get_data()
+    workout_id = workout_data.get("workout", {}).get("id")
+    if not workout_id:
+        await callback.answer("❌ Тренировка не найдена", show_alert=True)
+        return
+    async with get_session() as session:
+        deleted = await delete_last_workout_exercise(session, workout_id)
+    if deleted:
+        await callback.message.edit_text("❌ Последнее упражнение удалено.")
+        await callback.answer("Удалено!")
+    else:
+        await callback.answer("Нечего удалять", show_alert=True)
+
+
+@router.callback_query(F.data == "edit_last_exercise")
+async def on_edit_last_exercise(callback: CallbackQuery, state: FSMContext):
+    """Исправить: удалить последнее упражнение и предложить записать заново."""
+    workout_data = await state.get_data()
+    workout_id = workout_data.get("workout", {}).get("id")
+    if not workout_id:
+        await callback.answer("❌ Тренировка не найдена", show_alert=True)
+        return
+    async with get_session() as session:
+        deleted = await delete_last_workout_exercise(session, workout_id)
+    if deleted:
+        await callback.message.edit_text("✏️ Последнее упражнение удалено. Запиши его заново голосом или текстом.")
+        await callback.answer("Удалено — запиши заново!")
+    else:
+        await callback.answer("Нечего удалять", show_alert=True)
+
+
 # ----- Завершение и отмена (регистрировать до общего F.text) -----
+
+
+async def _do_finish_workout(workout_id: int) -> tuple[str, bool]:
+    """Считает рекорды, форматирует итоги. Возвращает (текст_итогов, успех)."""
+    if not workout_id:
+        return "Тренировка не найдена.", False
+    new_records = await check_and_save_records(workout_id)
+    summary = await format_workout_summary(workout_id, new_records=new_records)
+    return summary, True
+
+
+@router.callback_query(F.data == "finish_workout")
+async def finish_workout_handler(callback: CallbackQuery, state: FSMContext):
+    """Завершение тренировки по inline-кнопке."""
+    workout_data = await state.get_data()
+    workout_id = workout_data.get("workout", {}).get("id")
+    summary_text, ok = await _do_finish_workout(workout_id)
+    if not ok:
+        await callback.answer("Тренировка не найдена", show_alert=True)
+        return
+    await callback.message.answer(summary_text, parse_mode="HTML", reply_markup=main_menu())
+    await state.clear()
+    await callback.answer("✅ Тренировка завершена!")
+
+
+@router.callback_query(F.data == "cancel_workout")
+async def cancel_workout_handler(callback: CallbackQuery, state: FSMContext):
+    """Отмена тренировки по inline-кнопке (удаление из БД)."""
+    workout_data = await state.get_data()
+    workout_id = workout_data.get("workout", {}).get("id")
+    if workout_id:
+        await delete_workout(workout_id)
+    await callback.message.answer("❌ Тренировка отменена", reply_markup=main_menu())
+    await state.clear()
+    await callback.answer("Отменено")
+
+
+@router.callback_query(F.data == "back_to_workout")
+async def back_to_workout_handler(callback: CallbackQuery):
+    """Пользователь выбрал «Назад к тренировке»."""
+    await callback.message.edit_text("Продолжай записывать упражнения голосом или текстом.")
+    await callback.answer("Продолжаем тренировку")
 
 
 @router.message(F.text == "✅ Завершить тренировку", WorkoutStates.active)
 async def finish_workout(message: Message, state: FSMContext):
-    """
-    Завершение тренировки
-    - Считает итоговые объёмы
-    - Показывает итоги
-    """
+    """Завершение тренировки по кнопке Reply-клавиатуры."""
     workout_data = await state.get_data()
     workout = workout_data.get("workout") or {}
     workout_id = workout.get("id")
-
-    if not workout_id:
-        await message.answer("Тренировка не найдена.")
+    summary_text, ok = await _do_finish_workout(workout_id)
+    if not ok:
+        await message.answer(summary_text)
         await state.clear()
         return
-
-    async with get_session() as session:
-        summary = await get_workout_summary(session, workout_id)
-
-    date_str = summary["date"].strftime("%d.%m.%Y") if summary.get("date") else "—"
-    result = f"""
-🏋️ <b>Тренировка завершена!</b>
-
-📅 {date_str}
-🔹 Упражнений: {summary['exercises_count']}
-🔹 Подходов: {summary['sets_count']}
-🔹 Общая нагрузка: {summary['total_volume_kg']:.0f} кг
-
-💪 Отличная работа!
-"""
-    await message.answer(result, parse_mode="HTML")
+    await message.answer(summary_text, parse_mode="HTML", reply_markup=main_menu())
     await state.clear()
 
 
 # ----- Отмена тренировки -----
 
 
-@router.message(F.text == "🚫 Отменить", WorkoutStates.active)
+@router.message(F.text == "❌ Отменить тренировку", WorkoutStates.active)
 async def cancel_workout(message: Message, state: FSMContext):
-    """Отмена текущей тренировки (без удаления из БД)."""
-    await message.answer("Тренировка отменена.")
+    """Отмена тренировки по кнопке Reply-клавиатуры (удаление из БД)."""
+    workout_data = await state.get_data()
+    workout_id = workout_data.get("workout", {}).get("id")
+    if workout_id:
+        await delete_workout(workout_id)
+    await message.answer("❌ Тренировка отменена", reply_markup=main_menu())
     await state.clear()
 
 

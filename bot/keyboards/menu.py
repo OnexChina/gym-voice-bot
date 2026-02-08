@@ -31,20 +31,28 @@ def main_menu() -> ReplyKeyboardMarkup:
 
 
 def workout_menu() -> ReplyKeyboardMarkup:
-    """Меню во время тренировки."""
+    """Меню во время тренировки — постоянное (не исчезает)."""
+    keyboard = [
+        [KeyboardButton(text="✅ Завершить тренировку")],
+        [KeyboardButton(text="❌ Отменить тренировку")],
+        [KeyboardButton(text="◀️ Главное меню")],
+    ]
     return ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="▶️ Следующее упражнение")],
-            [
-                KeyboardButton(text="❌ Отменить последний подход"),
-                KeyboardButton(text="💬 Добавить комментарий"),
-            ],
-            [
-                KeyboardButton(text="✅ Завершить тренировку"),
-                KeyboardButton(text="🚫 Отменить"),
-            ],
-        ],
+        keyboard=keyboard,
         resize_keyboard=True,
+        one_time_keyboard=False,
+    )
+
+
+def workout_inline_buttons() -> InlineKeyboardMarkup:
+    """Inline-кнопки во время тренировки (завершить / отменить)."""
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="✅ Завершить", callback_data="finish_workout"),
+                InlineKeyboardButton(text="❌ Отменить", callback_data="cancel_workout"),
+            ],
+        ]
     )
 
 
@@ -113,15 +121,14 @@ def create_program_exercises_keyboard(
 
 
 def confirm_exercise(exercise_name: str, sets_count: int, volume: float) -> InlineKeyboardMarkup:
-    """Подтверждение записанного упражнения (верно / исправить / комментарий)."""
-    # callback_data не несёт exercise_name из-за лимита 64 байт; контекст в FSM/состоянии
+    """Подтверждение записанного упражнения: верно (закрыть), удалить последнее, исправить (удалить и записать заново)."""
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
-                InlineKeyboardButton(text="✅ Верно", callback_data="action:confirm_sets"),
-                InlineKeyboardButton(text="✏️ Исправить", callback_data="action:edit_sets"),
+                InlineKeyboardButton(text="✅ Верно", callback_data="confirm_exercise"),
+                InlineKeyboardButton(text="❌ Удалить последнее", callback_data="delete_last_exercise"),
             ],
-            [InlineKeyboardButton(text="💬 Добавить комментарий", callback_data="action:comment_sets")],
+            [InlineKeyboardButton(text="✏️ Исправить", callback_data="edit_last_exercise")],
         ]
     )
 

@@ -358,6 +358,25 @@ async def add_workout_exercise(
         return we
 
 
+async def delete_last_workout_exercise(session: AsyncSession, workout_id: int) -> bool:
+    """
+    Удаляет последнее добавленное упражнение из тренировки (по order_num desc).
+    Каскадно удаляются подходы (sets). Возвращает True если что-то удалено, False если нечего удалять.
+    """
+    result = await session.execute(
+        select(WorkoutExercise)
+        .where(WorkoutExercise.workout_id == workout_id)
+        .order_by(WorkoutExercise.order_num.desc())
+        .limit(1)
+    )
+    last_exercise = result.scalar_one_or_none()
+    if not last_exercise:
+        return False
+    await session.delete(last_exercise)
+    await session.flush()
+    return True
+
+
 async def remove_last_set(workout_id: int) -> bool:
     """Удаляет последний подход из тренировки. Возвращает True если удалено, иначе False."""
     async with get_session() as session:

@@ -2,10 +2,12 @@
 
 from aiogram import Router, F
 from aiogram.filters import CommandStart
-from aiogram.types import Message
+from aiogram.fsm.context import FSMContext
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
 
 from bot.database.engine import get_session
 from bot.database.crud import get_or_create_user, get_user_programs
+from bot.handlers.workout import WorkoutStates
 from bot.keyboards.menu import main_menu, program_selection
 
 router = Router()
@@ -36,6 +38,28 @@ async def cmd_start(message: Message):
 Начнём?
 """
     await message.answer(welcome_text, reply_markup=main_menu())
+
+
+@router.message(F.text == "◀️ Главное меню")
+async def back_to_main_menu(message: Message, state: FSMContext):
+    """Возврат в главное меню из любого места. При активной тренировке — предложить завершить/отменить."""
+    current_state = await state.get_state()
+    if current_state == WorkoutStates.active.state:
+        workout_data = await state.get_data()
+        if workout_data.get("workout"):
+            await message.answer(
+                "⚠️ У тебя активная тренировка!\n\nЗавершить или отменить её?",
+                reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                    [
+                        InlineKeyboardButton(text="✅ Завершить", callback_data="finish_workout"),
+                        InlineKeyboardButton(text="❌ Отменить", callback_data="cancel_workout"),
+                    ],
+                    [InlineKeyboardButton(text="◀️ Назад к тренировке", callback_data="back_to_workout")],
+                ]),
+            )
+            return
+    await state.clear()
+    await message.answer("🏠 Главное меню", reply_markup=main_menu())
 
 
 @router.message(F.text == "🏋️ Начать тренировку")
