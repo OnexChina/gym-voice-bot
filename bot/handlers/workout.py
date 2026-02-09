@@ -73,6 +73,7 @@ async def _process_parsed_workout(
 
         # Формат для add_workout_sets: список {exercise_name, reps, weight_kg}
         flat_sets = []
+        is_cardio = False
         for s in sets_list:
             w = s.get("weight")
             if w is not None and not isinstance(w, (int, float)):
@@ -80,6 +81,12 @@ async def _process_parsed_workout(
                     w = float(w)
                 except (TypeError, ValueError):
                     w = None
+            # Проверка на кардио: если weight=null и есть reps, возможно это время
+            if w is None and s.get("reps") is not None:
+                comment = s.get("comment") or ""
+                if "минут" in comment.lower() or "minute" in comment.lower():
+                    is_cardio = True
+            
             flat_sets.append({
                 "exercise_name": matched.get("name") or name,
                 "reps": s.get("reps"),
@@ -89,25 +96,45 @@ async def _process_parsed_workout(
         async with get_session() as session:
             await add_workout_sets(session, workout_id, flat_sets, user_id=user_id)
 
-        volume = 0.0
-        for s in sets_list:
-            r, w = s.get("reps"), s.get("weight")
-            if r is not None and w is not None:
-                try:
-                    volume += float(w) * int(r)
-                except (TypeError, ValueError):
-                    pass
+        # Форматирование вывода
+        if is_cardio or (len(sets_list) == 1 and sets_list[0].get("weight") is None):
+            # Кардио формат: время вместо веса
+            lines = []
+            for s in sets_list:
+                r = s.get("reps")
+                comment = s.get("comment") or ""
+                if r is not None:
+                    if "минут" in comment.lower() or "minute" in comment.lower():
+                        lines.append(f"• {r} минут")
+                    else:
+                        lines.append(f"• {r} мин" if r else "• —")
+                else:
+                    lines.append("• —")
+            text = (
+                f"✅ Записал:\n\n<b>{matched.get('name') or name}</b>\n"
+                + "\n".join(lines)
+            )
+        else:
+            # Силовой формат: вес × повторения
+            volume = 0.0
+            for s in sets_list:
+                r, w = s.get("reps"), s.get("weight")
+                if r is not None and w is not None:
+                    try:
+                        volume += float(w) * int(r)
+                    except (TypeError, ValueError):
+                        pass
 
-        lines = []
-        for s in sets_list:
-            w, r = s.get("weight"), s.get("reps")
-            if w is not None and r is not None:
-                lines.append(f"• {w} кг × {r}")
-        text = (
-            f"✅ Записал:\n\n<b>{matched.get('name') or name}</b>\n"
-            + "\n".join(lines)
-            + f"\n\n📊 Объём: {volume:.1f} кг"
-        )
+            lines = []
+            for s in sets_list:
+                w, r = s.get("weight"), s.get("reps")
+                if w is not None and r is not None:
+                    lines.append(f"• {w} кг × {r}")
+            text = (
+                f"✅ Записал:\n\n<b>{matched.get('name') or name}</b>\n"
+                + "\n".join(lines)
+                + f"\n\n📊 Объём: {volume:.1f} кг"
+            )
         await state.update_data(
             last_parsed_data=parsed,
             last_exercise_name=matched.get("name") or name,

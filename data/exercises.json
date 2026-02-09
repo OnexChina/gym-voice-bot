@@ -873,5 +873,61 @@
     "synonyms": ["гиперэкстензия в римском стуле", "разгибание корпуса", "roman chair"],
     "muscle_groups": ["спина", "ягодицы", "бицепс бедра"],
     "equipment": "тренажёр"
+  },
+  {
+    "name": "бег",
+    "name_en": "running",
+    "synonyms": ["пробежка", "кардио бег", "уличный бег", "run", "jogging"],
+    "muscle_groups": ["кардио", "ноги"],
+    "equipment": "улица"
+  },
+  {
+    "name": "бег на дорожке",
+    "name_en": "treadmill running",
+    "synonyms": ["дорожка", "беговая дорожка", "кардио дорожка", "treadmill", "running along the track", "running on treadmill", "treadmill run", "бег по дорожке"],
+    "muscle_groups": ["кардио", "ноги"],
+    "equipment": "тренажёр"
+  },
+  {
+    "name": "эллиптический тренажёр",
+    "name_en": "elliptical trainer",
+    "synonyms": ["эллипс", "эллипсоид", "кросс тренажёр", "elliptical"],
+    "muscle_groups": ["кардио", "ноги"],
+    "equipment": "тренажёр"
+  },
+  {
+    "name": "велотренажёр",
+    "name_en": "stationary bike",
+    "synonyms": ["вело", "кардио вело", "велосипед тренажёр", "bike", "spin bike"],
+    "muscle_groups": ["кардио", "ноги"],
+    "equipment": "тренажёр"
+  },
+  {
+    "name": "езда на велосипеде",
+    "name_en": "cycling",
+    "synonyms": ["велосипед", "велопрогулка", "road cycling"],
+    "muscle_groups": ["кардио", "ноги"],
+    "equipment": "улица"
+  },
+  {
+    "name": "гребной тренажёр",
+    "name_en": "rowing machine",
+    "synonyms": ["гребля", "гребля на тренажёре", "rower", "rowing"],
+    "muscle_groups": ["кардио", "спина", "ноги"],
+    "equipment": "тренажёр"
+  },
+  {
+    "name": "плавание",
+    "name_en": "swimming",
+    "synonyms": ["бассейн", "заплыв", "swim"],
+    "muscle_groups": ["кардио", "всё тело"],
+    "equipment": "бассейн"
+  },
+  {
+    "name": "ходьба быстрым шагом",
+    "name_en": "brisk walking",
+    "synonyms": ["быстрая ходьба", "скандинавская ходьба", "прогулка быстрым шагом"],
+    "muscle_groups": ["кардио", "ноги"],
+    "equipment": "улица"
   }
 ]
