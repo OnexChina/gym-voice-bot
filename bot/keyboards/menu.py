@@ -121,14 +121,17 @@ def create_program_exercises_keyboard(
 
 
 def confirm_exercise(exercise_name: str, sets_count: int, volume: float) -> InlineKeyboardMarkup:
-    """Подтверждение записанного упражнения: верно (закрыть), удалить последнее, исправить (удалить и записать заново)."""
+    """Подтверждение записанного упражнения: верно, удалить, исправить, комментарий."""
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
                 InlineKeyboardButton(text="✅ Верно", callback_data="confirm_exercise"),
-                InlineKeyboardButton(text="❌ Удалить последнее", callback_data="delete_last_exercise"),
+                InlineKeyboardButton(text="❌ Удалить", callback_data="delete_last_exercise"),
             ],
-            [InlineKeyboardButton(text="✏️ Исправить", callback_data="edit_last_exercise")],
+            [
+                InlineKeyboardButton(text="✏️ Исправить", callback_data="edit_last_exercise"),
+                InlineKeyboardButton(text="💬 Комментарий", callback_data="add_comment"),
+            ],
         ]
     )
 

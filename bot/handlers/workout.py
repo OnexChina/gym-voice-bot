@@ -12,7 +12,9 @@ from bot.database.crud import (
     add_workout_sets,
     check_and_save_records,
     create_workout,
+    delete_last_workout_exercise,
     delete_workout,
+    get_last_workout_exercise,
     get_or_create_user,
     get_workout_summary,
 )
@@ -30,6 +32,8 @@ logger = logging.getLogger(__name__)
 class WorkoutStates(StatesGroup):
     active = State()
     waiting_exercise = State()
+    waiting_exercise_name = State()  # Для ручного ввода названия упражнения
+    waiting_comment = State()  # Для ввода комментария
 
 
 async def _exercises_db_with_ids() -> list[dict]:
@@ -103,6 +107,11 @@ async def _process_parsed_workout(
             f"✅ Записал:\n\n<b>{matched.get('name') or name}</b>\n"
             + "\n".join(lines)
             + f"\n\n📊 Объём: {volume:.1f} кг"
+        )
+        await state.update_data(
+            last_parsed_data=parsed,
+            last_exercise_name=matched.get("name") or name,
+            last_sets_data=sets_list,
         )
         await message.answer(
             text,
@@ -253,7 +262,6 @@ async def on_delete_last_exercise(callback: CallbackQuery, state: FSMContext):
     if not workout_id:
         await callback.answer("❌ Тренировка не найдена", show_alert=True)
         return
-    from bot.database.crud import delete_last_workout_exercise
     async with get_session() as session:
         deleted = await delete_last_workout_exercise(session, workout_id)
     if deleted:
@@ -261,6 +269,144 @@ async def on_delete_last_exercise(callback: CallbackQuery, state: FSMContext):
         await callback.answer("Удалено!")
     else:
         await callback.answer("Нечего удалять", show_alert=True)
+
+
+@router.callback_query(F.data == "edit_last_exercise")
+async def on_edit_last_exercise(callback: CallbackQuery, state: FSMContext):
+    """Исправить название упражнения: удалить последнее и попросить ввести название вручную."""
+    workout_data = await state.get_data()
+    workout_id = workout_data.get("workout", {}).get("id")
+    if not workout_id:
+        await callback.answer("❌ Тренировка не найдена", show_alert=True)
+        return
+    
+    # Сохранить данные последнего упражнения для восстановления подходов
+    async with get_session() as session:
+        last_we = await get_last_workout_exercise(session, workout_id)
+        if not last_we:
+            await callback.answer("Нечего исправлять", show_alert=True)
+            return
+        
+        # Сохранить подходы в state для восстановления
+        sets_data = []
+        for s in last_we.sets:
+            sets_data.append({
+                "reps": s.reps,
+                "weight_kg": float(s.weight_kg) if s.weight_kg else None,
+            })
+        
+        # Удалить упражнение
+        await delete_last_workout_exercise(session, workout_id)
+    
+    await state.update_data(
+        pending_sets=sets_data,
+        pending_workout_id=workout_id,
+    )
+    await state.set_state(WorkoutStates.waiting_exercise_name)
+    
+    await callback.message.edit_text(
+        "✏️ Последнее упражнение удалено.\n\n"
+        "Напиши или скажи правильное название упражнения:"
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "add_comment")
+async def on_add_comment(callback: CallbackQuery, state: FSMContext):
+    """Добавить комментарий к последнему упражнению."""
+    workout_data = await state.get_data()
+    workout_id = workout_data.get("workout", {}).get("id")
+    if not workout_id:
+        await callback.answer("❌ Тренировка не найдена", show_alert=True)
+        return
+    
+    async with get_session() as session:
+        last_we = await get_last_workout_exercise(session, workout_id)
+        if not last_we:
+            await callback.answer("Нечего комментировать", show_alert=True)
+            return
+        
+        await state.update_data(pending_comment_we_id=last_we.id)
+    
+    await state.set_state(WorkoutStates.waiting_comment)
+    await callback.message.answer(
+        "💬 Напиши или скажи комментарий к упражнению:\n\n"
+        "Например: «Тяжело», «Легко», «Хорошо пошло»"
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("exercise:"))
+async def on_exercise_selected(callback: CallbackQuery, state: FSMContext):
+    """Пользователь выбрал упражнение из альтернатив."""
+    value = callback.data.split(":", 1)[1]
+    if value == "new":
+        await callback.answer("Создание нового упражнения — в разработке")
+        return
+    
+    workout_data = await state.get_data()
+    workout_id = workout_data.get("workout", {}).get("id")
+    if not workout_id:
+        await callback.answer("Тренировка не найдена", show_alert=True)
+        return
+    
+    exercises_db = await _exercises_db_with_ids()
+    try:
+        idx = int(value)
+    except ValueError:
+        await callback.answer()
+        return
+    
+    # Найти упражнение по индексу
+    if 0 <= idx < len(exercises_db):
+        selected_ex = exercises_db[idx]
+        exercise_name = selected_ex.get("name", "")
+        
+        # Получить сохранённые данные из state (если есть)
+        parsed_data = workout_data.get("last_parsed_data")
+        if parsed_data and parsed_data.get("exercises"):
+            ex_data = parsed_data["exercises"][0]
+            sets_list = ex_data.get("sets") or []
+            
+            flat_sets = []
+            for s in sets_list:
+                w = s.get("weight")
+                if w is not None and not isinstance(w, (int, float)):
+                    try:
+                        w = float(w)
+                    except (TypeError, ValueError):
+                        w = None
+                flat_sets.append({
+                    "exercise_name": exercise_name,
+                    "reps": s.get("reps"),
+                    "weight_kg": w,
+                })
+            
+            async with get_session() as session:
+                await add_workout_sets(session, workout_id, flat_sets, user_id=callback.from_user.id)
+            
+            volume = 0.0
+            for s in sets_list:
+                r, w = s.get("reps"), s.get("weight")
+                if r is not None and w is not None:
+                    try:
+                        volume += float(w) * int(r)
+                    except (TypeError, ValueError):
+                        pass
+            
+            lines = [f"• {s.get('weight', '—')} кг × {s.get('reps', '—')}" for s in sets_list]
+            text = f"✅ Записал:\n\n<b>{exercise_name}</b>\n" + "\n".join(lines) + f"\n\n📊 Объём: {volume:.1f} кг"
+            await callback.message.edit_text(
+                text,
+                reply_markup=confirm_exercise(exercise_name, len(sets_list), volume),
+                parse_mode="HTML",
+            )
+            await state.update_data(last_parsed_data=None)
+            await callback.answer("Записано!")
+        else:
+            await callback.answer("Данные не найдены", show_alert=True)
+    else:
+        await callback.answer("Ошибка выбора", show_alert=True)
 
 
 # ----- Завершение и отмена -----
@@ -350,3 +496,112 @@ async def handle_text_during_workout(message: Message, state: FSMContext):
     await _process_parsed_workout(
         message, state, parsed, workout_id, message.from_user.id
     )
+
+
+# ----- Ручной ввод названия упражнения (после "Исправить") -----
+
+
+@router.message(F.text, WorkoutStates.waiting_exercise_name)
+@router.message(F.voice, WorkoutStates.waiting_exercise_name)
+async def handle_manual_exercise_name(message: Message, state: FSMContext):
+    """Обработка ручного ввода названия упражнения (текст или голос)."""
+    text = message.text or ""
+    if message.voice:
+        text = await transcribe_voice(message.voice.file_id, settings.telegram_bot_token)
+        if not text:
+            await message.answer("❌ Не смог распознать. Попробуй ещё раз или напиши текстом.")
+            return
+        await message.answer(f"📝 Распознал: {text}")
+    
+    if not text or not text.strip():
+        await message.answer("Название не может быть пустым. Введи название упражнения:")
+        return
+    
+    workout_data = await state.get_data()
+    workout_id = workout_data.get("pending_workout_id")
+    sets_data = workout_data.get("pending_sets", [])
+    
+    if not workout_id:
+        await message.answer("Ошибка: тренировка не найдена.")
+        await state.clear()
+        return
+    
+    # Найти упражнение по названию
+    exercises_db = await _exercises_db_with_ids()
+    matched = await match_exercise(text.strip(), exercises_db)
+    exercise_name = matched.get("name") or text.strip()
+    
+    # Восстановить подходы с новым названием
+    flat_sets = []
+    for s in sets_data:
+        flat_sets.append({
+            "exercise_name": exercise_name,
+            "reps": s.get("reps"),
+            "weight_kg": s.get("weight_kg"),
+        })
+    
+    async with get_session() as session:
+        await add_workout_sets(session, workout_id, flat_sets, user_id=message.from_user.id)
+    
+    volume = 0.0
+    for s in sets_data:
+        r, w = s.get("reps"), s.get("weight_kg")
+        if r is not None and w is not None:
+            try:
+                volume += float(w) * int(r)
+            except (TypeError, ValueError):
+                pass
+    
+    lines = [f"• {s.get('weight_kg', '—')} кг × {s.get('reps', '—')}" for s in sets_data]
+    text_msg = (
+        f"✅ Исправлено и записано:\n\n<b>{exercise_name}</b>\n"
+        + "\n".join(lines)
+        + f"\n\n📊 Объём: {volume:.1f} кг"
+    )
+    await message.answer(
+        text_msg,
+        reply_markup=confirm_exercise(exercise_name, len(sets_data), volume),
+        parse_mode="HTML",
+    )
+    await state.set_state(WorkoutStates.active)
+    await state.update_data(
+        pending_sets=None,
+        pending_workout_id=None,
+        last_exercise_name=exercise_name,
+        last_sets_data=sets_data,
+    )
+
+
+# ----- Ввод комментария -----
+
+
+@router.message(F.text, WorkoutStates.waiting_comment)
+@router.message(F.voice, WorkoutStates.waiting_comment)
+async def handle_comment_input(message: Message, state: FSMContext):
+    """Обработка ввода комментария к упражнению (текст или голос)."""
+    text = message.text or ""
+    if message.voice:
+        text = await transcribe_voice(message.voice.file_id, settings.telegram_bot_token)
+        if not text:
+            await message.answer("❌ Не смог распознать. Попробуй ещё раз или напиши текстом.")
+            return
+        await message.answer(f"📝 Распознал: {text}")
+    
+    if not text or not text.strip():
+        await message.answer("Комментарий не может быть пустым. Введи комментарий:")
+        return
+    
+    workout_data = await state.get_data()
+    we_id = workout_data.get("pending_comment_we_id")
+    
+    if not we_id:
+        await message.answer("Ошибка: упражнение не найдено.")
+        await state.set_state(WorkoutStates.active)
+        return
+    
+    from bot.database.crud import add_exercise_comment
+    await add_exercise_comment(we_id, text.strip())
+    
+    await message.answer(f"✅ Комментарий добавлен: <i>{text.strip()}</i>", parse_mode="HTML")
+    await state.set_state(WorkoutStates.active)
+    await state.update_data(pending_comment_we_id=None)
