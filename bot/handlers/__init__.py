@@ -2,8 +2,7 @@
 
 from aiogram import Router
 
-from . import start, workout
-# from . import programs, stats  # TODO
+from . import start, workout, programs, stats
 
 
 def setup_handlers() -> Router:
@@ -11,7 +10,7 @@ def setup_handlers() -> Router:
 
     router.include_router(start.router)
     router.include_router(workout.router)
-    # router.include_router(programs.router)  # TODO
-    # router.include_router(stats.router)  # TODO
+    router.include_router(programs.router)
+    router.include_router(stats.router)
 
     return router

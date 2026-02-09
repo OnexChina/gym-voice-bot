@@ -52,22 +52,29 @@ async def start_workout(message: Message):
 
 @router.message(F.text == "📋 Мои программы")
 async def show_programs(message: Message):
-    """Показать список программ пользователя и подсказку по созданию."""
+    """Показать список программ пользователя с кнопкой создания."""
+    from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+    
     async with get_session() as session:
         await get_or_create_user(session, message.from_user.id, message.from_user.username)
         programs = await get_user_programs(session, message.from_user.id)
 
     if not programs:
         await message.answer(
-            "У тебя пока нет программ.\n\n"
-            "Создай программу командой, например:\n"
-            "<code>/newprogram Грудь+Трицепс</code>",
-            parse_mode="HTML",
+            "У тебя пока нет программ.\n\nСоздать первую программу?",
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="➕ Создать программу", callback_data="create_program")],
+            ]),
         )
         return
 
     lines = [f"• {p.name}" for p in programs]
-    await message.answer("📋 Твои программы:\n" + "\n".join(lines))
+    await message.answer(
+        "📋 Твои программы:\n" + "\n".join(lines),
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="➕ Создать программу", callback_data="create_program")],
+        ]),
+    )
 
 
 @router.message(F.text == "📊 Статистика")
