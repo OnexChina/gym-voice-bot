@@ -28,40 +28,42 @@ def _build_system_prompt(
     recent_exercises: list | None,
     available_exercises_names: list[str],
 ) -> str:
+    # Топ-50 популярных упражнений для точного сопоставления (названия только из этого списка)
+    top_names = available_exercises_names[:50] if available_exercises_names else []
+    exercises_block = "\n".join(f"- {n}" for n in top_names) if top_names else "(список пуст)"
+
     parts = [
-        "Ты ассистент для логирования тренировок в зале. Твоя задача — разобрать сообщение пользователя и вернуть строго один валидный JSON-объект без markdown и без пояснений.",
+        "Ты помощник для логирования тренировок в зале. Разбери сообщение пользователя и верни строго один валидный JSON без markdown.",
+        "",
+        "ДОСТУПНЫЕ УПРАЖНЕНИЯ (используй только эти названия или максимально близкие):",
+        exercises_block,
         "",
         "Контекст:",
     ]
     if current_workout:
         parts.append(f"- Текущая тренировка: {json.dumps(current_workout, ensure_ascii=False)}")
     if recent_exercises:
-        parts.append(f"- Последние упражнения сегодня: {json.dumps(recent_exercises, ensure_ascii=False)}")
-    if available_exercises_names:
-        parts.append(f"- Упражнения из программы/базы (для сопоставления названий): {json.dumps(available_exercises_names[:80], ensure_ascii=False)}")
+        parts.append(f"- Последние упражнения: {json.dumps(recent_exercises, ensure_ascii=False)}")
     parts.extend([
         "",
-        "Примеры ввода пользователя:",
-        '- "Жим лёжа 10 на 80, 8 на 85, 6 на 90" → добавление подходов',
-        '- "Разводка 3 по 12 на 20" → три подхода по 12 повторений с весом 20 кг',
-        '- "Последний подход был тяжёлый" → комментарий к последнему подходу (action: add_comment)',
-        '- "Убери последний подход" → удаление последнего подхода (action: remove_last)',
-        '- "Сделал как в прошлый раз плюс 5 кг" → редактирование/добавление с учётом контекста (action: edit_last или add_sets)',
-        '- "Присед 5x5 100 кг" → пять подходов по 5 повторений по 100 кг',
+        "Примеры ввода:",
+        '"Жим лёжа 10 на 80, 8 на 85" → exercises: [{"name": "жим штанги лёжа", "sets": [...]}]',
+        '"Разводка 3 по 12 на 20" → разводка гантелей лёжа, 3 подхода',
+        '"Присед 5x5 100" → приседания со штангой',
         "",
-        "Формат ответа — только один JSON-объект со следующими полями:",
-        '- "exercises": массив. Каждый элемент: {"name": "нормализованное название", "sets": [{"reps": число или null, "weight": число или null, "weight_unit": "kg" или "lb" или null, "comment": строка или null}], "exercise_comment": строка или null}. Если действие не add_sets — exercises может быть пустым.',
-        '- "workout_comment": строка или null — общий комментарий к тренировке.',
-        '- "confidence": число от 0 до 1 — уверенность в распознавании.',
-        '- "clarification_needed": true если текст непонятен, неоднозначен или пуст.',
-        '- "clarification_question": строка или null — вопрос пользователю при clarification_needed (например: "Имеется в виду жим штанги или гантелей?").',
-        '- "action": одна из строк: "add_sets", "remove_last", "edit_last", "add_comment".',
+        "Формат ответа — один JSON:",
+        '- "exercises": массив. Элемент: {"name": "название ИЗ СПИСКА ВЫШЕ", "sets": [{"reps": N, "weight": N, "weight_unit": "kg"|"lb"|null}]}.',
+        '- "workout_comment": строка или null.',
+        '- "confidence": 0–1. Если НЕ УВЕРЕН в упражнении (разные жимы, приседы и т.д.) — ставь confidence < 0.8 и заполни "alternatives".',
+        '- "clarification_needed": true если непонятно или пусто.',
+        '- "clarification_question": вопрос пользователю при clarification_needed.',
+        '- "alternatives": массив 2–3 вариантов, если confidence < 0.8. Элемент: {"name": "название из списка", "confidence": число}. Пример: [{"name": "жим штанги лёжа", "confidence": 0.7}, {"name": "жим гантелей лёжа", "confidence": 0.6}].',
+        '- "action": "add_sets" | "remove_last" | "edit_last" | "add_comment".',
         "",
         "Правила:",
-        "- Если вес не указан — в sets используй weight: null, weight_unit: null.",
-        "- Если единица веса фунты (фунт, lb, lbs) — укажи weight_unit: \"lb\".",
-        "- Если текст пустой или не про тренировку — clarification_needed: true, confidence: 0, exercises: [], action: \"add_sets\".",
-        "- Названия упражнений нормализуй на русском, как в зале (жим лёжа, присед, тяга и т.д.).",
+        "- Название упражнения — только из списка ДОСТУПНЫЕ УПРАЖНЕНИЯ или максимально близкая формулировка.",
+        "- Если сомневаешься (жим штанги/гантелей, присед/жим ногами) — confidence < 0.8, заполни alternatives 2–3 вариантами.",
+        "- Вес в кг по умолчанию; lb — укажи weight_unit: \"lb\".",
     ])
     return "\n".join(parts)
 
@@ -272,6 +274,17 @@ async def parse_workout_message(
 
     workout_comment = (parsed.get("workout_comment") or "").strip() or None
 
+    # Альтернативы от GPT при низкой уверенности
+    alternatives_raw = parsed.get("alternatives")
+    alternatives_out = []
+    if isinstance(alternatives_raw, list):
+        for a in alternatives_raw[:5]:
+            if isinstance(a, dict) and a.get("name"):
+                alternatives_out.append({
+                    "name": (a.get("name") or "").strip(),
+                    "confidence": float(a.get("confidence", 0.5)) if a.get("confidence") is not None else 0.5,
+                })
+
     return {
         "exercises": exercises_out,
         "workout_comment": workout_comment,
@@ -279,4 +292,5 @@ async def parse_workout_message(
         "clarification_needed": clarification_needed,
         "clarification_question": clarification_question,
         "action": action,
+        "alternatives": alternatives_out,
     }

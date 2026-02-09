@@ -11,7 +11,6 @@ router = Router()
 
 
 @router.message(Command("programs"))
-@router.message(F.text.in_(["📋 Программы", "📋 Мои программы"]))
 async def cmd_programs(message: Message) -> None:
     async with get_session() as session:
         await get_or_create_user(session, message.from_user.id, message.from_user.username)

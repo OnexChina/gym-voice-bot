@@ -133,6 +133,19 @@ def confirm_exercise(exercise_name: str, sets_count: int, volume: float) -> Inli
     )
 
 
+def confirm_sets_keyboard() -> InlineKeyboardMarkup:
+    """Клавиатура после добавления подходов к текущему упражнению."""
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="✅ Верно", callback_data="confirm_sets"),
+                InlineKeyboardButton(text="❌ Удалить", callback_data="delete_last_sets"),
+            ],
+            [InlineKeyboardButton(text="✔️ Закончить упражнение", callback_data="finish_exercise")],
+        ]
+    )
+
+
 # ----- Inline: альтернативы упражнения -----
 
 
@@ -177,13 +190,12 @@ def stats_menu() -> InlineKeyboardMarkup:
 
 
 def settings_menu() -> InlineKeyboardMarkup:
-    """Настройки (язык, единицы, уведомления, назад)."""
+    """Меню настроек (язык, единицы, назад)."""
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="🇷🇺 Язык: Русский", callback_data="settings:lang")],
-            [InlineKeyboardButton(text="⚖️ Единицы: Килограммы", callback_data="settings:units")],
-            [InlineKeyboardButton(text="🔔 Уведомления: Вкл", callback_data="settings:notifications")],
-            [InlineKeyboardButton(text="◀️ Назад", callback_data="action:back")],
+            [InlineKeyboardButton(text="🇷🇺 Язык: Русский", callback_data="settings:language")],
+            [InlineKeyboardButton(text="⚖️ Единицы: кг", callback_data="settings:units")],
+            [InlineKeyboardButton(text="◀️ Назад", callback_data="back_to_menu")],
         ]
     )
 

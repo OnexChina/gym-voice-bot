@@ -12,7 +12,6 @@ router = Router()
 
 
 @router.message(Command("stats"))
-@router.message(F.text == "📊 Статистика")
 async def cmd_stats(message: Message) -> None:
     async with get_session() as session:
         await get_or_create_user(session, message.from_user.id, message.from_user.username)

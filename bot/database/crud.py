@@ -358,6 +358,101 @@ async def add_workout_exercise(
         return we
 
 
+async def get_last_workout_exercise(
+    session: AsyncSession, workout_id: int
+) -> Optional[WorkoutExercise]:
+    """Получить последнее упражнение в тренировке (по order_num desc), с загруженным exercise."""
+    result = await session.execute(
+        select(WorkoutExercise)
+        .where(WorkoutExercise.workout_id == workout_id)
+        .options(selectinload(WorkoutExercise.exercise))
+        .order_by(WorkoutExercise.order_num.desc())
+        .limit(1)
+    )
+    return result.scalar_one_or_none()
+
+
+async def add_sets_to_existing_exercise(
+    session: AsyncSession,
+    workout_exercise_id: int,
+    sets: list[dict],
+) -> None:
+    """Добавить подходы к существующему упражнению в тренировке. sets: [{"reps": N, "weight_kg": N}, ...]."""
+    result = await session.execute(
+        select(WorkoutExercise)
+        .where(WorkoutExercise.id == workout_exercise_id)
+        .options(selectinload(WorkoutExercise.sets))
+    )
+    we = result.scalar_one_or_none()
+    if not we:
+        return
+    current_count = len(we.sets)
+    volume_add = Decimal("0")
+    for i, s in enumerate(sets):
+        reps = s.get("reps")
+        weight_kg = s.get("weight_kg")
+        if weight_kg is not None and reps is not None:
+            volume_add += Decimal(str(weight_kg)) * int(reps)
+        set_row = Set(
+            workout_exercise_id=workout_exercise_id,
+            set_number=current_count + i + 1,
+            reps=reps,
+            weight_kg=Decimal(str(weight_kg)) if weight_kg is not None else None,
+        )
+        session.add(set_row)
+    we.volume_kg = (we.volume_kg or Decimal("0")) + volume_add
+    await session.flush()
+
+
+async def get_exercise_set_count(session: AsyncSession, workout_exercise_id: int) -> int:
+    """Получить количество подходов у упражнения в тренировке."""
+    result = await session.execute(
+        select(func.count(Set.id)).where(Set.workout_exercise_id == workout_exercise_id)
+    )
+    return int(result.scalar() or 0)
+
+
+async def update_workout_exercise_exercise_id(
+    session: AsyncSession, workout_exercise_id: int, new_exercise_id: int
+) -> bool:
+    """Обновить упражнение в записи тренировки (например, при «Исправить»). Подходы не трогаем."""
+    result = await session.execute(
+        update(WorkoutExercise)
+        .where(WorkoutExercise.id == workout_exercise_id)
+        .values(exercise_id=new_exercise_id)
+    )
+    await session.flush()
+    return result.rowcount > 0
+
+
+async def remove_last_sets_from_exercise(
+    session: AsyncSession, workout_exercise_id: int, count: int
+) -> int:
+    """Удалить последние count подходов у упражнения в тренировке. Пересчитывает volume_kg. Возвращает число удалённых."""
+    if count <= 0:
+        return 0
+    result = await session.execute(
+        select(WorkoutExercise)
+        .where(WorkoutExercise.id == workout_exercise_id)
+        .options(selectinload(WorkoutExercise.sets))
+    )
+    we = result.scalar_one_or_none()
+    if not we or not we.sets:
+        return 0
+    sets_sorted = sorted(we.sets, key=lambda s: s.set_number, reverse=True)
+    to_delete = sets_sorted[:count]
+    to_delete_ids = {s.id for s in to_delete}
+    for s in to_delete:
+        await session.delete(s)
+    remaining = [s for s in we.sets if s.id not in to_delete_ids]
+    new_vol = sum(
+        (s.weight_kg or Decimal("0")) * (s.reps or 0) for s in remaining
+    )
+    we.volume_kg = new_vol if new_vol else None
+    await session.flush()
+    return len(to_delete)
+
+
 async def delete_last_workout_exercise(session: AsyncSession, workout_id: int) -> bool:
     """
     Удаляет последнее добавленное упражнение из тренировки (по order_num desc).

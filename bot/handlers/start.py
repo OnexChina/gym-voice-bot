@@ -1,31 +1,19 @@
-"""Команда /start и главное меню."""
-
 from aiogram import Router, F
 from aiogram.filters import CommandStart
+from aiogram.types import Message
 from aiogram.fsm.context import FSMContext
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
-
+from bot.keyboards.menu import main_menu
 from bot.database.engine import get_session
-from bot.database.crud import get_or_create_user, get_user_programs
-from bot.handlers.workout import WorkoutStates
-from bot.keyboards.menu import main_menu, program_selection
+from bot.database.crud import get_or_create_user
 
 router = Router()
 
-
 @router.message(CommandStart())
 async def cmd_start(message: Message):
-    """
-    Обработчик команды /start
-    - Создаёт пользователя в БД если его нет
-    - Показывает приветствие
-    - Выводит главное меню
-    """
     async with get_session() as session:
         await get_or_create_user(session, message.from_user.id, message.from_user.username)
-
-    welcome_text = f"""
-👋 Привет, {message.from_user.first_name}!
+    
+    welcome_text = f"""👋 Привет, {message.from_user.first_name}!
 
 Я твой голосовой помощник для тренировок в зале.
 
@@ -35,69 +23,33 @@ async def cmd_start(message: Message):
 
 Я сам пойму, запишу и посчитаю объёмы! 💪
 
-Начнём?
-"""
+Начнём?"""
+    
     await message.answer(welcome_text, reply_markup=main_menu())
-
-
-@router.message(F.text == "◀️ Главное меню")
-async def back_to_main_menu(message: Message, state: FSMContext):
-    """Возврат в главное меню из любого места. При активной тренировке — предложить завершить/отменить."""
-    current_state = await state.get_state()
-    if current_state == WorkoutStates.active.state:
-        workout_data = await state.get_data()
-        if workout_data.get("workout"):
-            await message.answer(
-                "⚠️ У тебя активная тренировка!\n\nЗавершить или отменить её?",
-                reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-                    [
-                        InlineKeyboardButton(text="✅ Завершить", callback_data="finish_workout"),
-                        InlineKeyboardButton(text="❌ Отменить", callback_data="cancel_workout"),
-                    ],
-                    [InlineKeyboardButton(text="◀️ Назад к тренировке", callback_data="back_to_workout")],
-                ]),
-            )
-            return
-    await state.clear()
-    await message.answer("🏠 Главное меню", reply_markup=main_menu())
-
 
 @router.message(F.text == "🏋️ Начать тренировку")
 async def start_workout(message: Message):
-    """
-    Начало новой тренировки
-    - Показывает выбор программы или freestyle
-    """
-    async with get_session() as session:
-        await get_or_create_user(session, message.from_user.id, message.from_user.username)
-        programs = await get_user_programs(session, message.from_user.id)
-
-    program_list = [{"id": p.id, "name": p.name} for p in programs]
-    await message.answer(
-        "Выбери программу или начни свободную тренировку:",
-        reply_markup=program_selection(program_list),
-    )
-
+    from bot.keyboards.menu import program_selection
+    programs = []
+    await message.answer("Выбери программу или начни свободную тренировку", reply_markup=program_selection(programs))
 
 @router.message(F.text == "📋 Мои программы")
 async def show_programs(message: Message):
-    """Показывает список программ пользователя"""
-    await message.answer("Твои программы тренировок")
-
+    await message.answer("📋 Твои программы тренировок (в разработке)")
 
 @router.message(F.text == "📊 Статистика")
 async def show_stats(message: Message):
-    """Показывает меню статистики"""
-    await message.answer("Статистика")
-
+    await message.answer("📊 Статистика (в разработке)")
 
 @router.message(F.text == "➕ Добавить упражнение")
 async def add_exercise(message: Message):
-    """Добавление кастомного упражнения"""
-    await message.answer("Напиши название нового упражнения")
-
+    await message.answer("➕ Добавление упражнения (в разработке)")
 
 @router.message(F.text == "⚙️ Настройки")
 async def show_settings(message: Message):
-    """Показывает настройки"""
-    await message.answer("Настройки")
+    await message.answer("⚙️ Настройки (в разработке)")
+
+@router.message(F.text == "◀️ Главное меню")
+async def back_to_main(message: Message, state: FSMContext):
+    await state.clear()
+    await message.answer("🏠 Главное меню", reply_markup=main_menu())
