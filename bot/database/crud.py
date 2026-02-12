@@ -372,6 +372,22 @@ async def get_last_workout_exercise(
     return result.scalar_one_or_none()
 
 
+async def get_workout_exercise_by_exercise_id(
+    session: AsyncSession, workout_id: int, exercise_id: int
+) -> Optional[WorkoutExercise]:
+    """Найти в тренировке запись упражнения по exercise_id (последнюю по order_num для накопления подходов)."""
+    result = await session.execute(
+        select(WorkoutExercise)
+        .where(
+            WorkoutExercise.workout_id == workout_id,
+            WorkoutExercise.exercise_id == exercise_id,
+        )
+        .order_by(WorkoutExercise.order_num.desc())
+        .limit(1)
+    )
+    return result.scalar_one_or_none()
+
+
 async def add_sets_to_existing_exercise(
     session: AsyncSession,
     workout_exercise_id: int,
@@ -794,12 +810,18 @@ async def add_workout_sets_with_session(
     sets: list[dict],
     user_id: Optional[int] = None,
 ) -> None:
-    """Добавляет подходы по exercise_name (группирует по упражнению). С передачей сессии."""
+    """Добавляет подходы по exercise_name. Если упражнение уже есть в тренировке — добавляет подходы к нему (накопление)."""
     by_exercise: dict[str, list[dict]] = {}
     for s in sets:
         name = (s.get("exercise_name") or "").strip() or "Упражнение"
         by_exercise.setdefault(name, []).append(s)
-    order_num = 0
+    # Текущий max order_num для новых упражнений
+    r = await session.execute(
+        select(func.coalesce(func.max(WorkoutExercise.order_num), -1)).where(
+            WorkoutExercise.workout_id == workout_id
+        )
+    )
+    next_order_num = (r.scalar() or -1) + 1
     for exercise_name, exercise_sets in by_exercise.items():
         ex_result = await session.execute(select(Exercise).where(Exercise.name == exercise_name))
         ex = ex_result.scalar_one_or_none()
@@ -812,24 +834,30 @@ async def add_workout_sets_with_session(
             session.add(ex)
             await session.flush()
             await session.refresh(ex)
-        we = WorkoutExercise(workout_id=workout_id, exercise_id=ex.id, order_num=order_num)
-        session.add(we)
-        await session.flush()
-        volume = Decimal("0")
-        for i, s in enumerate(exercise_sets):
-            reps = s.get("reps")
-            weight_kg = s.get("weight_kg")
-            if weight_kg is not None and reps is not None:
-                volume += Decimal(str(weight_kg)) * int(reps)
-            set_row = Set(
-                workout_exercise_id=we.id,
-                set_number=i + 1,
-                reps=reps,
-                weight_kg=Decimal(str(weight_kg)) if weight_kg is not None else None,
+        existing_we = await get_workout_exercise_by_exercise_id(session, workout_id, ex.id)
+        if existing_we:
+            await add_sets_to_existing_exercise(session, existing_we.id, exercise_sets)
+        else:
+            we = WorkoutExercise(
+                workout_id=workout_id, exercise_id=ex.id, order_num=next_order_num
             )
-            session.add(set_row)
-        we.volume_kg = volume if volume else None
-        order_num += 1
+            session.add(we)
+            await session.flush()
+            volume = Decimal("0")
+            for i, s in enumerate(exercise_sets):
+                reps = s.get("reps")
+                weight_kg = s.get("weight_kg")
+                if weight_kg is not None and reps is not None:
+                    volume += Decimal(str(weight_kg)) * int(reps)
+                set_row = Set(
+                    workout_exercise_id=we.id,
+                    set_number=i + 1,
+                    reps=reps,
+                    weight_kg=Decimal(str(weight_kg)) if weight_kg is not None else None,
+                )
+                session.add(set_row)
+            we.volume_kg = volume if volume else None
+            next_order_num += 1
     await session.flush()
 
 

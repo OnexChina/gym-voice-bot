@@ -16,6 +16,7 @@ from bot.database.crud import (
     delete_workout,
     get_last_workout_exercise,
     get_or_create_user,
+    get_workout_by_id,
     get_workout_summary,
 )
 from bot.keyboards.menu import confirm_exercise, exercise_alternatives, main_menu, workout_menu
@@ -57,6 +58,16 @@ async def _process_parsed_workout(
     exercises_db = await _exercises_db_with_ids()
     workout_data = await state.get_data()
     current_workout = workout_data.get("workout") or {}
+
+    if not parsed.get("exercises") or len(parsed["exercises"]) == 0:
+        await message.answer(
+            "❌ Не смог разобрать упражнение из сообщения.\n\n"
+            "Попробуй сказать проще, например:\n"
+            "• «Бег на дорожке 30 минут»\n"
+            "• «Жим лёжа 10 на 80»\n"
+            "• «Плавание 20 минут»"
+        )
+        return
 
     for exercise_data in parsed["exercises"]:
         name = exercise_data.get("name") or "Упражнение"
@@ -498,6 +509,37 @@ async def cancel_workout(message: Message, state: FSMContext):
         await delete_workout(workout_id)
     await message.answer("❌ Тренировка отменена", reply_markup=main_menu())
     await state.clear()
+
+
+@router.message(F.text == "📊 Текущая тренировка")
+async def show_current_workout_summary(message: Message, state: FSMContext):
+    """Показать сводку текущей активной тренировки или сообщение об отсутствии."""
+    data = await state.get_data()
+    workout_id = (data.get("workout") or {}).get("id")
+    if not workout_id:
+        await message.answer("Нет активной тренировки. Нажми Начать тренировку")
+        return
+    workout = await get_workout_by_id(workout_id)
+    if not workout:
+        await message.answer("Тренировка не найдена.")
+        return
+    exercises = sorted(workout.workout_exercises, key=lambda we: we.order_num)
+    lines = []
+    for we in exercises:
+        name = we.exercise.name if we.exercise else "Упражнение"
+        lines.append(f"🏋️ {name}")
+        for s in sorted(we.sets, key=lambda x: x.set_number):
+            if s.weight_kg is not None and s.reps is not None:
+                lines.append(f"  Подход {s.set_number}: {s.weight_kg} кг × {s.reps} повт")
+            elif s.reps is not None:
+                lines.append(f"  Подход {s.set_number}: {s.reps} мин")
+            else:
+                lines.append(f"  Подход {s.set_number}: —")
+        lines.append("")
+    total_ex = len(exercises)
+    total_sets = sum(len(we.sets) for we in exercises)
+    lines.append(f"Итого: {total_ex} упражнений, {total_sets} подходов")
+    await message.answer("\n".join(lines).strip())
 
 
 # ----- Текст во время тренировки -----

@@ -15,7 +15,10 @@ def main_menu() -> ReplyKeyboardMarkup:
     """Главное меню (постоянное)."""
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="🏋️ Начать тренировку")],
+            [
+                KeyboardButton(text="🏋️ Начать тренировку"),
+                KeyboardButton(text="📊 Текущая тренировка"),
+            ],
             [
                 KeyboardButton(text="📋 Мои программы"),
                 KeyboardButton(text="📊 Статистика"),
