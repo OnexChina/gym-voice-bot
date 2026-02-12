@@ -155,6 +155,18 @@ def confirm_sets_keyboard() -> InlineKeyboardMarkup:
 # ----- Inline: альтернативы упражнения -----
 
 
+def add_exercise_confirm() -> InlineKeyboardMarkup:
+    """Кнопки при неизвестном упражнении: добавить в базу или уточнить название."""
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="✅ Да, добавить", callback_data="add_exercise_yes"),
+                InlineKeyboardButton(text="❌ Нет", callback_data="add_exercise_no"),
+            ],
+        ]
+    )
+
+
 def exercise_alternatives(alternatives: list) -> InlineKeyboardMarkup:
     """
     Выбор из похожих упражнений при неопределённости.

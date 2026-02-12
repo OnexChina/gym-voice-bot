@@ -19,7 +19,7 @@ from bot.database.crud import (
     get_workout_by_id,
     get_workout_summary,
 )
-from bot.keyboards.menu import confirm_exercise, exercise_alternatives, main_menu, workout_menu
+from bot.keyboards.menu import add_exercise_confirm, confirm_exercise, exercise_alternatives, main_menu, workout_menu
 from bot.services.analytics import format_workout_summary
 from bot.services.exercises import load_exercises
 from bot.services.nlp import match_exercise, parse_workout_message
@@ -76,10 +76,17 @@ async def _process_parsed_workout(
         matched = await match_exercise(name, exercises_db)
         if matched.get("confidence", 0) < 0.7:
             alts = matched.get("alternatives") or []
+            if alts:
+                await message.answer(
+                    "🤔 Не уверен, что правильно понял упражнение.\nТы имел в виду:",
+                    reply_markup=exercise_alternatives(alts),
+                )
+                return
             await message.answer(
-                "🤔 Не уверен, что правильно понял упражнение.\nТы имел в виду:",
-                reply_markup=exercise_alternatives(alts),
+                f"Упражнение «{name}» не найдено в базе. Добавить его?",
+                reply_markup=add_exercise_confirm(),
             )
+            await state.update_data(pending_unknown_exercise={"name": name, "sets_list": sets_list})
             return
 
         # Формат для add_workout_sets: список {exercise_name, reps, weight_kg}
@@ -290,6 +297,60 @@ async def on_confirm_exercise(callback: CallbackQuery):
     """Пользователь подтвердил — закрыть сообщение."""
     await callback.message.delete()
     await callback.answer("✅ Записано!")
+
+
+@router.callback_query(F.data == "add_exercise_yes")
+async def on_add_exercise_yes(callback: CallbackQuery, state: FSMContext):
+    """Пользователь согласился добавить неизвестное упражнение в базу и записать подходы."""
+    data = await state.get_data()
+    workout_id = (data.get("workout") or {}).get("id")
+    pending = data.get("pending_unknown_exercise") or {}
+    name = (pending.get("name") or "").strip() or "Упражнение"
+    sets_list = pending.get("sets_list") or []
+    await state.update_data(pending_unknown_exercise=None)
+    if not workout_id or not sets_list:
+        await callback.message.edit_text("Данные устарели. Напиши упражнение и подходы ещё раз.")
+        await callback.answer()
+        return
+    flat_sets = []
+    for s in sets_list:
+        w = s.get("weight") or s.get("weight_kg")
+        if w is not None and not isinstance(w, (int, float)):
+            try:
+                w = float(w)
+            except (TypeError, ValueError):
+                w = None
+        flat_sets.append({
+            "exercise_name": name,
+            "reps": s.get("reps"),
+            "weight_kg": w,
+        })
+    async with get_session() as session:
+        await add_workout_sets(session, workout_id, flat_sets, user_id=callback.from_user.id)
+    volume = 0.0
+    for s in sets_list:
+        r, w = s.get("reps"), s.get("weight") or s.get("weight_kg")
+        if r is not None and w is not None:
+            try:
+                volume += float(w) * int(r)
+            except (TypeError, ValueError):
+                pass
+    lines = [f"• {s.get('weight', s.get('weight_kg', '—'))} кг × {s.get('reps', '—')}" for s in sets_list]
+    text = (
+        f"✅ Добавил упражнение «{name}» в базу и записал подходы:\n\n"
+        + "\n".join(lines)
+        + (f"\n\n📊 Объём: {volume:.1f} кг" if volume else "")
+    )
+    await callback.message.edit_text(text, reply_markup=confirm_exercise(name, len(sets_list), volume), parse_mode="HTML")
+    await callback.answer("Добавлено!")
+
+
+@router.callback_query(F.data == "add_exercise_no")
+async def on_add_exercise_no(callback: CallbackQuery, state: FSMContext):
+    """Пользователь отказался добавлять упражнение — просим уточнить название."""
+    await state.update_data(pending_unknown_exercise=None)
+    await callback.message.edit_text("Уточни название упражнения и напиши ещё раз.")
+    await callback.answer()
 
 
 @router.callback_query(F.data == "delete_last_exercise")

@@ -929,5 +929,82 @@
     "synonyms": ["быстрая ходьба", "скандинавская ходьба", "прогулка быстрым шагом"],
     "muscle_groups": ["кардио", "ноги"],
     "equipment": "улица"
+  },
+  {
+    "name": "скручивания (пресс)",
+    "name_en": "crunch",
+    "synonyms": ["скручивания", "кранчи", "crunch", "пресс скручивания"],
+    "muscle_groups": ["пресс"],
+    "equipment": "вес тела"
+  },
+  {
+    "name": "скручивания на скамье",
+    "name_en": "bench crunch",
+    "synonyms": ["скручивания на наклонной", "пресс на скамье", "bench crunch"],
+    "muscle_groups": ["пресс"],
+    "equipment": "скамья"
+  },
+  {
+    "name": "скручивания на полу",
+    "name_en": "floor crunch",
+    "synonyms": ["скручивания на коврике", "пресс на полу", "floor crunch"],
+    "muscle_groups": ["пресс"],
+    "equipment": "вес тела"
+  },
+  {
+    "name": "подъём ног в висе",
+    "name_en": "hanging leg raise",
+    "synonyms": ["подъём ног на турнике", "вис подъём ног", "hanging leg raise", "поднятие ног в висе"],
+    "muscle_groups": ["пресс"],
+    "equipment": "турник"
+  },
+  {
+    "name": "подъём ног лёжа",
+    "name_en": "lying leg raise",
+    "synonyms": ["подъём ног на спине", "поднятие ног лёжа", "lying leg raise"],
+    "muscle_groups": ["пресс"],
+    "equipment": "вес тела"
+  },
+  {
+    "name": "планка",
+    "name_en": "plank",
+    "synonyms": ["планка на локтях", "упор лёжа", "plank", "классическая планка"],
+    "muscle_groups": ["пресс", "кора", "плечи"],
+    "equipment": "вес тела"
+  },
+  {
+    "name": "боковая планка",
+    "name_en": "side plank",
+    "synonyms": ["планка на боку", "side plank", "боковая планка на локте"],
+    "muscle_groups": ["пресс", "кора", "косые мышцы"],
+    "equipment": "вес тела"
+  },
+  {
+    "name": "велосипед",
+    "name_en": "bicycle crunch",
+    "synonyms": ["велосипед пресс", "bicycle crunch", "скручивание велосипед"],
+    "muscle_groups": ["пресс", "косые мышцы"],
+    "equipment": "вес тела"
+  },
+  {
+    "name": "русский твист",
+    "name_en": "Russian twist",
+    "synonyms": ["русское скручивание", "твист", "russian twist", "скручивание с поворотом"],
+    "muscle_groups": ["пресс", "косые мышцы"],
+    "equipment": "вес тела"
+  },
+  {
+    "name": "книжка (пресс)",
+    "name_en": "jackknife",
+    "synonyms": ["книжка", "складка", "jackknife", "v-up", "пресс книжка"],
+    "muscle_groups": ["пресс"],
+    "equipment": "вес тела"
+  },
+  {
+    "name": "обратные скручивания",
+    "name_en": "reverse crunch",
+    "synonyms": ["обратный скручивание", "reverse crunch", "подъём таза лёжа"],
+    "muscle_groups": ["пресс"],
+    "equipment": "вес тела"
   }
 ]
