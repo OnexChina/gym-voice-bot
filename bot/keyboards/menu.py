@@ -246,6 +246,17 @@ def create_pagination_keyboard(
     )
 
 
+# ----- Динамическая клавиатура по активной тренировке -----
+
+
+def get_main_keyboard(workout_active: bool) -> ReplyKeyboardMarkup:
+    """
+    Главная клавиатура в зависимости от наличия активной тренировки.
+    Если workout_active — показывать кнопки «Текущая тренировка» и «Закончить тренировку».
+    """
+    return workout_menu() if workout_active else main_menu()
+
+
 # ----- Совместимость со старым кодом -----
 
 

@@ -274,8 +274,29 @@
   },
   {
     "name": "жим гантелей сидя",
-    "name_en": "dumbbell shoulder press",
-    "synonyms": ["жим гантелей стоя", "жим гантелей сидя", "dumbbell press", "жим плечи"],
+    "name_en": "dumbbell shoulder press seated",
+    "synonyms": ["жим гантелей сидя", "dumbbell press seated", "жим плечи сидя"],
+    "muscle_groups": ["плечи", "трицепс"],
+    "equipment": "гантели"
+  },
+  {
+    "name": "жим гантелей стоя",
+    "name_en": "dumbbell shoulder press standing",
+    "synonyms": ["жим гантелей стоя", "жим гантелей над головой стоя", "dumbbell press standing"],
+    "muscle_groups": ["плечи", "трицепс"],
+    "equipment": "гантели"
+  },
+  {
+    "name": "жим гантели стоя",
+    "name_en": "single arm dumbbell press standing",
+    "synonyms": ["жим одной гантели стоя", "жим гантели над головой стоя"],
+    "muscle_groups": ["плечи", "трицепс"],
+    "equipment": "гантели"
+  },
+  {
+    "name": "жим гантели сидя",
+    "name_en": "single arm dumbbell press seated",
+    "synonyms": ["жим одной гантели сидя", "жим гантели над головой сидя"],
     "muscle_groups": ["плечи", "трицепс"],
     "equipment": "гантели"
   },
@@ -1006,5 +1027,19 @@
     "synonyms": ["обратный скручивание", "reverse crunch", "подъём таза лёжа"],
     "muscle_groups": ["пресс"],
     "equipment": "вес тела"
+  },
+  {
+    "name": "скручивания на полу книжка",
+    "name_en": "floor book crunch",
+    "synonyms": ["книжка на полу", "скручивания книжка", "пресс книжка на полу"],
+    "muscle_groups": ["пресс"],
+    "equipment": "вес тела"
+  },
+  {
+    "name": "скручивания на блоке",
+    "name_en": "cable crunch",
+    "synonyms": ["скручивания в блоке", "пресс на блоке", "cable crunch", "скручивания в кроссовере"],
+    "muscle_groups": ["пресс"],
+    "equipment": "блок"
   }
 ]

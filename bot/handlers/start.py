@@ -5,7 +5,7 @@ from aiogram.types import Message, InlineKeyboardButton, InlineKeyboardMarkup, C
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 
-from bot.keyboards.menu import main_menu, program_selection, workout_menu
+from bot.keyboards.menu import get_main_keyboard, main_menu, program_selection, workout_menu
 from bot.database.engine import get_session
 from bot.database.crud import (
     add_workout_sets,
@@ -55,7 +55,7 @@ async def start_workout(message: Message, state: FSMContext):
     workout_id = (data.get("workout") or {}).get("id")
     if workout_id:
         await message.answer(
-            "У тебя уже есть активная тренировка. Хочешь продолжить её или начать новую?",
+            "У тебя уже есть активная тренировка 💪 Продолжить её?",
             reply_markup=InlineKeyboardMarkup(inline_keyboard=[
                 [InlineKeyboardButton(text="Продолжить", callback_data="workout_continue")],
                 [InlineKeyboardButton(text="Начать новую", callback_data="workout_start_new")],
@@ -235,8 +235,8 @@ async def add_exercise_sets_entered(message: Message, state: FSMContext):
         await state.set_state(WorkoutStates.active)
     line = f"⚖️ {weight_kg} кг × 🔁 {reps} повт" if weight_kg is not None and reps is not None else f"🔁 {reps} повт" if reps is not None else "—"
     await message.answer(
-        f"✅ Упражнение «{name}» добавлено в базу и записан подход!\n\n{line}",
-        reply_markup=workout_menu() if workout_id else main_menu(),
+        f"✅ Упражнение добавлено и подход записан!\n\n{line}",
+        reply_markup=get_main_keyboard(bool(workout_id)),
     )
 
 
@@ -263,8 +263,7 @@ async def show_settings(message: Message):
 
 @router.message(F.text == "◀️ Главное меню")
 async def back_to_main(message: Message, state: FSMContext):
-    """Показать главное меню; если есть активная тренировка — клавиатура с Закончить/Текущая остаётся."""
+    """Показать главное меню; если есть активная тренировка — кнопка «Закончить тренировку» остаётся видимой."""
     data = await state.get_data()
-    workout_id = (data.get("workout") or {}).get("id")
-    reply_markup = workout_menu() if workout_id else main_menu()
-    await message.answer("🏠 Главное меню", reply_markup=reply_markup)
+    workout_active = bool((data.get("workout") or {}).get("id"))
+    await message.answer("🏠 Главное меню", reply_markup=get_main_keyboard(workout_active))

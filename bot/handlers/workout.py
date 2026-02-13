@@ -74,15 +74,18 @@ async def _process_parsed_workout(
         sets_list = exercise_data.get("sets") or []
 
         matched = await match_exercise(name, exercises_db)
-        if matched.get("confidence", 0) < 0.7:
+        confidence = matched.get("confidence", 0)
+        # Точное или > 90% — записываем без переспроса. 60–90% — варианты. < 60% — предложить добавить.
+        if confidence >= 0.9:
+            pass  # сразу записываем ниже
+        elif confidence >= 0.6:
             alts = matched.get("alternatives") or []
             data = await state.get_data()
             pending_clar = data.get("pending_clarification") or {}
-            # Если это уже вторая попытка (повторный ввод после "нет") — не показываем альтернативы снова, предлагаем добавить
             if pending_clar.get("attempts", 0) >= 2:
                 await state.update_data(pending_clarification=None)
                 await message.answer(
-                    f"Упражнение «{name}» не найдено в базе. Добавить его?",
+                    f"Добавить «{name}» как новое упражнение?",
                     reply_markup=add_exercise_confirm(),
                 )
                 await state.update_data(pending_unknown_exercise={"name": name, "sets_list": sets_list})
@@ -97,7 +100,15 @@ async def _process_parsed_workout(
                 )
                 return
             await message.answer(
-                f"Упражнение «{name}» не найдено в базе. Добавить его?",
+                f"Добавить «{name}» как новое упражнение?",
+                reply_markup=add_exercise_confirm(),
+            )
+            await state.update_data(pending_unknown_exercise={"name": name, "sets_list": sets_list})
+            return
+        else:
+            # < 60% — не найдено, предложить добавить
+            await message.answer(
+                f"Добавить «{name}» как новое упражнение?",
                 reply_markup=add_exercise_confirm(),
             )
             await state.update_data(pending_unknown_exercise={"name": name, "sets_list": sets_list})
@@ -451,12 +462,45 @@ async def on_add_comment(callback: CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data.startswith("exercise:"))
 async def on_exercise_selected(callback: CallbackQuery, state: FSMContext):
-    """Пользователь выбрал упражнение из альтернатив."""
+    """Пользователь выбрал упражнение из альтернатив или «Создать новое»."""
     value = callback.data.split(":", 1)[1]
     if value == "new":
-        await callback.answer("Создание нового упражнения — в разработке")
+        # «Создать новое упражнение» — добавляем текущее название и подходы как новое упражнение
+        data = await state.get_data()
+        pending_clar = data.get("pending_clarification") or {}
+        name = (pending_clar.get("name") or "").strip() or "Упражнение"
+        sets_list = pending_clar.get("sets_list") or []
+        workout_id = (data.get("workout") or {}).get("id")
+        await state.update_data(pending_clarification=None)
+        if not workout_id or not sets_list:
+            await callback.message.edit_text("Данные устарели. Напиши упражнение и подходы ещё раз.")
+            await callback.answer()
+            return
+        flat_sets = []
+        for s in sets_list:
+            w = s.get("weight") or s.get("weight_kg")
+            if w is not None and not isinstance(w, (int, float)):
+                try:
+                    w = float(w)
+                except (TypeError, ValueError):
+                    w = None
+            flat_sets.append({"exercise_name": name, "reps": s.get("reps"), "weight_kg": w})
+        async with get_session() as session:
+            await add_workout_sets(session, workout_id, flat_sets, user_id=callback.from_user.id)
+        volume = 0.0
+        for s in sets_list:
+            r, w = s.get("reps"), s.get("weight") or s.get("weight_kg")
+            if r is not None and w is not None:
+                try:
+                    volume += float(w) * int(r)
+                except (TypeError, ValueError):
+                    pass
+        lines = [f"• {s.get('weight', s.get('weight_kg', '—'))} кг × {s.get('reps', '—')}" for s in sets_list]
+        text = f"✅ Упражнение добавлено и подход записан!\n\n<b>{name}</b>\n" + "\n".join(lines) + (f"\n\n📊 Объём: {volume:.1f} кг" if volume else "")
+        await callback.message.edit_text(text, reply_markup=confirm_exercise(name, len(sets_list), volume), parse_mode="HTML")
+        await callback.answer("Добавлено!")
         return
-    
+
     await state.update_data(pending_clarification=None)
     workout_data = await state.get_data()
     workout_id = workout_data.get("workout", {}).get("id")
@@ -661,7 +705,7 @@ async def handle_text_during_workout(message: Message, state: FSMContext):
                 return
             exercises_db = await _exercises_db_with_ids()
             matched = await match_exercise(new_name, exercises_db)
-            if matched.get("confidence", 0) >= 0.7:
+            if matched.get("confidence", 0) >= 0.9:
                 flat_sets = []
                 for s in sets_list:
                     w = s.get("weight") or s.get("weight_kg")
@@ -697,7 +741,7 @@ async def handle_text_during_workout(message: Message, state: FSMContext):
                 return
             # Снова не нашли — предлагаем добавить как новое
             await message.answer(
-                f"Упражнение «{new_name}» не найдено в базе. Добавить его?",
+                f"Добавить «{new_name}» как новое упражнение?",
                 reply_markup=add_exercise_confirm(),
             )
             await state.update_data(pending_unknown_exercise={"name": new_name, "sets_list": sets_list})

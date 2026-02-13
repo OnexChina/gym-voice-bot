@@ -108,7 +108,37 @@ def _parse_gpt_response(content: str) -> dict[str, Any] | None:
 
 
 def _normalize_name(name: str) -> str:
-    return name.strip().lower() if name else ""
+    """Нормализация для поиска: lower, strip, схлопнуть пробелы."""
+    if not name:
+        return ""
+    return " ".join(name.strip().lower().split())
+
+
+# Слова, различающие упражнения (стоя/сидя/лёжа и т.д.). При несовпадении — не считать точным матчем.
+DISCRIMINATIVE_WORDS = frozenset({
+    "стоя", "сидя", "лёжа", "лежа", "в висе", "в наклоне", "наклоне",
+    "на скамье", "скамье", "на полу", "полу", "в блоке", "блоке",
+    "одной рукой", "рукой", "двумя", "гантели", "гантелей",
+})
+
+
+def _discriminative_in(text: str) -> set[str]:
+    """Множество дискриминирующих слов, входящих в текст."""
+    norm = _normalize_name(text)
+    words = set(norm.split())
+    return words & DISCRIMINATIVE_WORDS
+
+
+def _discriminative_conflict(query: str, name: str) -> bool:
+    """
+    True если в запросе и в названии разные ключевые слова (стоя vs сидя и т.д.).
+    Тогда матч не считается точным.
+    """
+    q_d = _discriminative_in(query)
+    n_d = _discriminative_in(name)
+    if not q_d or not n_d:
+        return False
+    return q_d != n_d
 
 
 def _exercise_name_matches(a: str, b: str) -> bool:
@@ -117,10 +147,19 @@ def _exercise_name_matches(a: str, b: str) -> bool:
     return na == nb or na in nb or nb in na
 
 
+def _query_words(norm_query: str) -> list[str]:
+    """Слова запроса (без коротких стоп-слов для гибкого поиска)."""
+    words = [w for w in norm_query.split() if len(w) > 1]
+    return words if words else norm_query.split()
+
+
 async def match_exercise(exercise_name: str, exercises_db: list[dict]) -> dict[str, Any]:
     """
-    Сопоставляет название упражнения с базой (синонимы, опечатки, близость).
-    exercises_db: список dict с ключами id (опционально), name, synonyms (опционально), name_en (опционально).
+    Сопоставляет название упражнения с базой.
+    - Точное совпадение или similarity > 90% → confidence >= 0.9, записывать без переспроса.
+    - Похожее (60–90%) → confidence 0.6–0.9, предложить варианты.
+    - Не найдено (< 60%) → confidence < 0.6, предложить добавить как новое.
+    Дискриминирующие слова (стоя/сидя/лёжа) при несовпадении снижают оценку.
     """
     if not exercise_name or not exercises_db:
         return {"exercise_id": None, "name": exercise_name or "", "confidence": 0.0, "alternatives": []}
@@ -130,6 +169,7 @@ async def match_exercise(exercise_name: str, exercises_db: list[dict]) -> dict[s
         return {"exercise_id": None, "name": exercise_name, "confidence": 0.0, "alternatives": []}
 
     candidates: list[tuple[float, dict]] = []  # (score, exercise_dict)
+    query_words = _query_words(norm_query)
 
     for ex in exercises_db:
         name = ex.get("name") or ""
@@ -139,25 +179,37 @@ async def match_exercise(exercise_name: str, exercises_db: list[dict]) -> dict[s
         norm_name = _normalize_name(name)
         norm_en = _normalize_name(name_en)
 
+        # Разные ключевые слова (стоя vs сидя и т.д.) — это упражнение не подходит
+        if _discriminative_conflict(norm_query, norm_name):
+            continue
+
         if norm_query == norm_name or norm_query == norm_en:
             candidates.append((1.0, {"exercise_id": ex_id, "name": name, "confidence": 1.0}))
             continue
         if norm_query in norm_name or norm_name in norm_query:
-            candidates.append((0.95, {"exercise_id": ex_id, "name": name, "confidence": 0.9}))
+            candidates.append((0.95, {"exercise_id": ex_id, "name": name, "confidence": 0.92}))
             continue
         if norm_query in norm_en or norm_en in norm_query:
-            candidates.append((0.9, {"exercise_id": ex_id, "name": name, "confidence": 0.85}))
+            candidates.append((0.9, {"exercise_id": ex_id, "name": name, "confidence": 0.88}))
             continue
         for syn in synonyms:
             norm_syn = _normalize_name(str(syn))
+            if _discriminative_conflict(norm_query, norm_syn):
+                continue
             if norm_query == norm_syn or norm_query in norm_syn or norm_syn in norm_query:
-                candidates.append((0.85, {"exercise_id": ex_id, "name": name, "confidence": 0.8}))
+                candidates.append((0.85, {"exercise_id": ex_id, "name": name, "confidence": 0.82}))
                 break
+        else:
+            # Частичное совпадение по словам; дискриминирующие должны совпадать
+            search_text = f"{norm_name} {norm_en} " + " ".join(_normalize_name(str(s)) for s in synonyms)
+            if query_words and all(w in search_text for w in query_words):
+                if not _discriminative_conflict(norm_query, norm_name):
+                    candidates.append((0.75, {"exercise_id": ex_id, "name": name, "confidence": 0.75}))
 
     if not candidates:
         return {"exercise_id": None, "name": exercise_name, "confidence": 0.0, "alternatives": []}
 
-    candidates.sort(key=lambda x: -x[0])
+    candidates.sort(key=lambda x: (-x[0], x[1].get("name", "")))
     best = candidates[0][1]
     alternatives = [c[1] for c in candidates[1:6]]
     return {
