@@ -720,6 +720,24 @@ async def get_user_records(
         return list(result.scalars().all())
 
 
+async def get_user_1rm_records(user_id: int, limit: int = 20) -> list[dict]:
+    """Рекорды 1ПМ пользователя: список {exercise_name, value} по убыванию value."""
+    async with get_session() as session:
+        stmt = (
+            select(Record)
+            .where(Record.user_id == user_id, Record.record_type == "max_1rm")
+            .options(selectinload(Record.exercise))
+            .order_by(Record.value.desc())
+            .limit(limit)
+        )
+        result = await session.execute(stmt)
+        records = list(result.scalars().all())
+    return [
+        {"exercise_name": r.exercise.name if r.exercise else "?", "value": float(r.value)}
+        for r in records
+    ]
+
+
 async def get_week_comparison(user_id: int) -> dict:
     """
     Сравнение с прошлой неделей.
@@ -765,8 +783,8 @@ async def get_week_comparison(user_id: int) -> dict:
         diff_percent = ((curr_vol - prev_vol) / prev_vol) * 100
 
     return {
-        "current_week": current_week,
-        "previous_week": previous_week,
+        "current_week": {**current_week, "start": start_cw, "end": end_cw},
+        "previous_week": {**previous_week, "start": start_pw, "end": end_pw},
         "diff_percent": round(diff_percent, 1),
     }
 

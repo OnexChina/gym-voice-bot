@@ -34,9 +34,12 @@ def main_menu() -> ReplyKeyboardMarkup:
 
 
 def workout_menu() -> ReplyKeyboardMarkup:
-    """Меню во время тренировки — постоянное (не исчезает)."""
+    """Меню во время тренировки: Текущая тренировка, Закончить, Отменить, Главное меню (всегда видимы)."""
     keyboard = [
-        [KeyboardButton(text="✅ Завершить тренировку")],
+        [
+            KeyboardButton(text="📊 Текущая тренировка"),
+            KeyboardButton(text="🏁 Закончить тренировку"),
+        ],
         [KeyboardButton(text="❌ Отменить тренировку")],
         [KeyboardButton(text="◀️ Главное меню")],
     ]
@@ -44,6 +47,7 @@ def workout_menu() -> ReplyKeyboardMarkup:
         keyboard=keyboard,
         resize_keyboard=True,
         one_time_keyboard=False,
+        is_persistent=True,
     )
 
 

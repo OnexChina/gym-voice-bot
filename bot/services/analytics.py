@@ -12,6 +12,7 @@ from bot.database.crud import (
     get_exercise_history,
     get_user_records,
     get_user_workouts,
+    get_user_1rm_records,
     get_week_comparison,
     get_workout_by_id,
 )
@@ -21,6 +22,7 @@ MONTHS_RU = [
     "", "января", "февраля", "марта", "апреля", "мая", "июня",
     "июля", "августа", "сентября", "октября", "ноября", "декабря",
 ]
+MONTHS_SHORT = ["", "янв", "фев", "мар", "апр", "май", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"]
 MONTHS_NOMINATIVE = [
     "", "январь", "февраль", "март", "апрель", "май", "июнь",
     "июль", "август", "сентябрь", "октябрь", "ноябрь", "декабрь",
@@ -443,3 +445,49 @@ async def get_pr_stats(workouts: list) -> str:
     for name, (w, r, one_rm) in sorted(best.items(), key=lambda x: -x[1][2])[:10]:
         lines.append(f"• {name}: {w:.0f} кг x {r} (≈1RM {one_rm:.0f} кг)")
     return "Рекорды (≈1RM):\n" + "\n".join(lines)
+
+
+def _week_range_str(start: date, end: date) -> str:
+    """Формат диапазона недели: '10-16 фев'."""
+    try:
+        month = MONTHS_SHORT[end.month] if end.month < len(MONTHS_SHORT) else str(end.month)
+        return f"{start.day}-{end.day} {month}"
+    except (IndexError, AttributeError):
+        return f"{start} — {end}"
+
+
+async def format_weekly_stats(user_id: int) -> str:
+    """
+    Статистика по неделям и рекорды 1ПМ для экрана «📊 Статистика».
+    Формат с эмодзи: 💪 тренировки, 📈 объём, 🥇 рекорды.
+    """
+    data = await get_week_comparison(user_id)
+    cw = data.get("current_week") or {}
+    pw = data.get("previous_week") or {}
+    lines = []
+
+    start_cw, end_cw = cw.get("start"), cw.get("end")
+    start_pw, end_pw = pw.get("start"), pw.get("end")
+    if start_cw and end_cw:
+        lines.append(f"📅 Эта неделя ({_week_range_str(start_cw, end_cw)}):")
+        lines.append(f"  💪 Тренировок: {cw.get('workouts_count', 0)}")
+        lines.append(f"  📈 Общий объём: {_fmt_num(cw.get('total_volume_kg') or 0)} кг")
+        lines.append("")
+    if start_pw and end_pw:
+        lines.append(f"📅 Прошлая неделя ({_week_range_str(start_pw, end_pw)}):")
+        lines.append(f"  💪 Тренировок: {pw.get('workouts_count', 0)}")
+        lines.append(f"  📈 Общий объём: {_fmt_num(pw.get('total_volume_kg') or 0)} кг")
+        lines.append("")
+
+    records_1rm = await get_user_1rm_records(user_id, limit=15)
+    lines.append("🏆 Рекорды (1ПМ):")
+    if records_1rm:
+        for r in records_1rm:
+            name = r.get("exercise_name") or "?"
+            val = r.get("value")
+            if val is not None:
+                lines.append(f"  🥇 💪 {name}: {float(val):.0f} кг")
+    else:
+        lines.append("  Пока нет записанных рекордов 1ПМ.")
+
+    return "\n".join(lines).strip()
