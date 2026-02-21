@@ -24,7 +24,10 @@ def main_menu() -> ReplyKeyboardMarkup:
                 KeyboardButton(text="📊 Статистика"),
             ],
             [
+                KeyboardButton(text="📅 История тренировок"),
                 KeyboardButton(text="➕ Добавить упражнение"),
+            ],
+            [
                 KeyboardButton(text="⚙️ Настройки"),
             ],
         ],

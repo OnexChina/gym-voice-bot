@@ -1,7 +1,7 @@
 import re
 from aiogram import Router, F
 from aiogram.filters import CommandStart
-from aiogram.types import Message, InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
+from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 
@@ -11,6 +11,7 @@ from bot.database.crud import (
     add_workout_sets,
     create_custom_exercise,
     create_workout,
+    delete_all_user_data,
     get_exercise_by_name,
     get_or_create_user,
     get_user_programs,
@@ -64,13 +65,38 @@ async def start_workout(message: Message, state: FSMContext):
         return
     async with get_session() as session:
         await get_or_create_user(session, message.from_user.id, message.from_user.username)
-        programs = await get_user_programs(session, message.from_user.id)
 
-    program_list = [{"id": p.id, "name": p.name} for p in programs]
     await message.answer(
-        "Выбери программу или начни свободную тренировку:",
-        reply_markup=program_selection(program_list),
+        "Тренироваться по программе или свободно?",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="📋 Выбрать программу", callback_data="workout:choose_program")],
+            [InlineKeyboardButton(text="🎯 Свободная тренировка", callback_data="program:freestyle")],
+        ]),
     )
+
+
+@router.callback_query(F.data == "workout:choose_program")
+async def workout_choose_program(callback: CallbackQuery):
+    """Показать список программ для выбора."""
+    async with get_session() as session:
+        await get_or_create_user(session, callback.from_user.id, callback.from_user.username)
+        programs = await get_user_programs(session, callback.from_user.id)
+    if not programs:
+        await callback.message.edit_text(
+            "У тебя пока нет программ. Создай программу в разделе «📋 Мои программы» или нажми «Свободная тренировка».",
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="🎯 Свободная тренировка", callback_data="program:freestyle")],
+            ]),
+        )
+        await callback.answer()
+        return
+    buttons = [[InlineKeyboardButton(text=p.name[:32], callback_data=f"program:{p.id}")] for p in programs]
+    buttons.append([InlineKeyboardButton(text="🎯 Свободная тренировка", callback_data="program:freestyle")])
+    await callback.message.edit_text(
+        "Выбери программу:",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons),
+    )
+    await callback.answer()
 
 
 @router.callback_query(F.data == "workout_continue")
@@ -128,7 +154,45 @@ async def show_stats(message: Message):
         await get_or_create_user(session, message.from_user.id, message.from_user.username)
 
     text = await format_weekly_stats(message.from_user.id)
-    await message.answer(f"📊 Статистика\n\n{text}")
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🗑 Очистить всю статистику", callback_data="stats:clear_ask")],
+    ])
+    await message.answer(f"📊 Статистика\n\n{text}", reply_markup=keyboard)
+
+
+@router.callback_query(F.data == "stats:clear_ask")
+async def stats_clear_ask(callback: CallbackQuery):
+    """Первое подтверждение очистки статистики."""
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="✅ Да", callback_data="stats:clear_ask2")],
+        [InlineKeyboardButton(text="❌ Нет", callback_data="stats:clear_no")],
+    ])
+    await callback.message.edit_text("Ты уверен? Все данные тренировок будут удалены навсегда.", reply_markup=keyboard)
+    await callback.answer()
+
+
+@router.callback_query(F.data == "stats:clear_ask2")
+async def stats_clear_ask2(callback: CallbackQuery):
+    """Второе подтверждение очистки статистики."""
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="✅ Да, удалить всё", callback_data="stats:clear_confirm")],
+        [InlineKeyboardButton(text="❌ Нет", callback_data="stats:clear_no")],
+    ])
+    await callback.message.edit_text("Это действие нельзя отменить. Удалить всё?", reply_markup=keyboard)
+    await callback.answer()
+
+
+@router.callback_query(F.data == "stats:clear_no")
+async def stats_clear_no(callback: CallbackQuery):
+    await callback.message.edit_text("Очистка отменена.")
+    await callback.answer()
+
+
+@router.callback_query(F.data == "stats:clear_confirm")
+async def stats_clear_confirm(callback: CallbackQuery):
+    await delete_all_user_data(callback.from_user.id)
+    await callback.message.edit_text("Вся статистика удалена.")
+    await callback.answer()
 
 
 def _muscle_group_keyboard() -> InlineKeyboardMarkup:

@@ -167,6 +167,16 @@ async def delete_program(program_id: int) -> None:
         await session.execute(delete(Program).where(Program.id == program_id))
 
 
+async def update_program_exercises(program_id: int, exercises: list[dict]) -> None:
+    """Обновляет список упражнений программы. exercises: [{"exercise_id": int, "name": str, "order": int}, ...]."""
+    async with get_session() as session:
+        result = await session.execute(select(Program).where(Program.id == program_id))
+        program = result.scalar_one_or_none()
+        if program:
+            program.exercises = exercises
+            await session.flush()
+
+
 # ============= WORKOUTS =============
 
 
@@ -241,6 +251,13 @@ async def delete_workout(workout_id: int) -> None:
     """Удаляет тренировку (каскадно удалятся workout_exercises и sets)."""
     async with get_session() as session:
         await session.execute(delete(Workout).where(Workout.id == workout_id))
+
+
+async def delete_all_user_data(user_id: int) -> None:
+    """Удаляет все тренировки и рекорды пользователя (очистка статистики)."""
+    async with get_session() as session:
+        await session.execute(delete(Record).where(Record.user_id == user_id))
+        await session.execute(delete(Workout).where(Workout.user_id == user_id))
 
 
 async def get_workout_summary(session: AsyncSession, workout_id: int) -> dict:

@@ -28,8 +28,18 @@ def _build_system_prompt(
     recent_exercises: list | None,
     available_exercises_names: list[str],
 ) -> str:
-    # Топ-50 популярных упражнений для точного сопоставления (названия только из этого списка)
-    top_names = available_exercises_names[:50] if available_exercises_names else []
+    # Приоритет: кардио и пресс первые (для лучшего распознавания), затем остальные. Макс 150.
+    cardio_keywords = ["бег", "плавание", "вело", "эллипс", "дорожка", "гребля", "кардио"]
+    press_keywords = ["пресс", "скручивания", "планка", "книжка", "подъём ног"]
+    rest = []
+    cardio_press = []
+    for n in (available_exercises_names or []):
+        n_lower = n.lower()
+        if any(k in n_lower for k in cardio_keywords) or any(k in n_lower for k in press_keywords):
+            cardio_press.append(n)
+        else:
+            rest.append(n)
+    top_names = (cardio_press + rest)[:150]
     exercises_block = "\n".join(f"- {n}" for n in top_names) if top_names else "(список пуст)"
 
     parts = [
@@ -114,52 +124,14 @@ def _normalize_name(name: str) -> str:
     return " ".join(name.strip().lower().split())
 
 
-# Слова, различающие упражнения (стоя/сидя/лёжа и т.д.). При несовпадении — не считать точным матчем.
-DISCRIMINATIVE_WORDS = frozenset({
-    "стоя", "сидя", "лёжа", "лежа", "в висе", "в наклоне", "наклоне",
-    "на скамье", "скамье", "на полу", "полу", "в блоке", "блоке",
-    "одной рукой", "рукой", "двумя", "гантели", "гантелей",
-})
-
-
-def _discriminative_in(text: str) -> set[str]:
-    """Множество дискриминирующих слов, входящих в текст."""
-    norm = _normalize_name(text)
-    words = set(norm.split())
-    return words & DISCRIMINATIVE_WORDS
-
-
-def _discriminative_conflict(query: str, name: str) -> bool:
+def match_exercise(exercise_name: str, exercises_db: list[dict]) -> dict[str, Any]:
     """
-    True если в запросе и в названии разные ключевые слова (стоя vs сидя и т.д.).
-    Тогда матч не считается точным.
-    """
-    q_d = _discriminative_in(query)
-    n_d = _discriminative_in(name)
-    if not q_d or not n_d:
-        return False
-    return q_d != n_d
-
-
-def _exercise_name_matches(a: str, b: str) -> bool:
-    """Проверка совпадения названий (точное после нормализации или вхождение)."""
-    na, nb = _normalize_name(a), _normalize_name(b)
-    return na == nb or na in nb or nb in na
-
-
-def _query_words(norm_query: str) -> list[str]:
-    """Слова запроса (без коротких стоп-слов для гибкого поиска)."""
-    words = [w for w in norm_query.split() if len(w) > 1]
-    return words if words else norm_query.split()
-
-
-async def match_exercise(exercise_name: str, exercises_db: list[dict]) -> dict[str, Any]:
-    """
-    Сопоставляет название упражнения с базой.
-    - Точное совпадение или similarity > 90% → confidence >= 0.9, записывать без переспроса.
-    - Похожее (60–90%) → confidence 0.6–0.9, предложить варианты.
-    - Не найдено (< 60%) → confidence < 0.6, предложить добавить как новое.
-    Дискриминирующие слова (стоя/сидя/лёжа) при несовпадении снижают оценку.
+    Простой поиск упражнения по базе (без fuzzy).
+    1. Точное совпадение по name (lower)
+    2. Совпадение по synonyms (lower)
+    3. Слово пользователя ВНУТРИ названия (substring)
+    4. Слово из названия ВНУТРИ фразы пользователя
+    Если нашли — возвращаем match с confidence=1.0. Если нет — confidence=0, alternatives=[].
     """
     if not exercise_name or not exercises_db:
         return {"exercise_id": None, "name": exercise_name or "", "confidence": 0.0, "alternatives": []}
@@ -168,56 +140,69 @@ async def match_exercise(exercise_name: str, exercises_db: list[dict]) -> dict[s
     if not norm_query:
         return {"exercise_id": None, "name": exercise_name, "confidence": 0.0, "alternatives": []}
 
-    candidates: list[tuple[float, dict]] = []  # (score, exercise_dict)
-    query_words = _query_words(norm_query)
-
+    # 1. Точное совпадение по name
     for ex in exercises_db:
         name = ex.get("name") or ""
-        name_en = ex.get("name_en") or ""
-        synonyms = ex.get("synonyms") or []
-        ex_id = ex.get("id")
         norm_name = _normalize_name(name)
-        norm_en = _normalize_name(name_en)
+        if norm_query == norm_name:
+            return {
+                "exercise_id": ex.get("id"),
+                "name": name,
+                "confidence": 1.0,
+                "alternatives": [],
+            }
 
-        # Разные ключевые слова (стоя vs сидя и т.д.) — это упражнение не подходит
-        if _discriminative_conflict(norm_query, norm_name):
-            continue
-
-        if norm_query == norm_name or norm_query == norm_en:
-            candidates.append((1.0, {"exercise_id": ex_id, "name": name, "confidence": 1.0}))
-            continue
-        if norm_query in norm_name or norm_name in norm_query:
-            candidates.append((0.95, {"exercise_id": ex_id, "name": name, "confidence": 0.92}))
-            continue
-        if norm_query in norm_en or norm_en in norm_query:
-            candidates.append((0.9, {"exercise_id": ex_id, "name": name, "confidence": 0.88}))
-            continue
-        for syn in synonyms:
+    # 2. Совпадение по synonyms
+    for ex in exercises_db:
+        name = ex.get("name") or ""
+        for syn in ex.get("synonyms") or []:
             norm_syn = _normalize_name(str(syn))
-            if _discriminative_conflict(norm_query, norm_syn):
-                continue
-            if norm_query == norm_syn or norm_query in norm_syn or norm_syn in norm_query:
-                candidates.append((0.85, {"exercise_id": ex_id, "name": name, "confidence": 0.82}))
-                break
-        else:
-            # Частичное совпадение по словам; дискриминирующие должны совпадать
-            search_text = f"{norm_name} {norm_en} " + " ".join(_normalize_name(str(s)) for s in synonyms)
-            if query_words and all(w in search_text for w in query_words):
-                if not _discriminative_conflict(norm_query, norm_name):
-                    candidates.append((0.75, {"exercise_id": ex_id, "name": name, "confidence": 0.75}))
+            if norm_query == norm_syn:
+                return {
+                    "exercise_id": ex.get("id"),
+                    "name": name,
+                    "confidence": 1.0,
+                    "alternatives": [],
+                }
 
-    if not candidates:
-        return {"exercise_id": None, "name": exercise_name, "confidence": 0.0, "alternatives": []}
+    # 3. Слово пользователя (или вся фраза) ВНУТРИ названия
+    for ex in exercises_db:
+        name = ex.get("name") or ""
+        norm_name = _normalize_name(name)
+        if norm_query in norm_name:
+            return {
+                "exercise_id": ex.get("id"),
+                "name": name,
+                "confidence": 1.0,
+                "alternatives": [],
+            }
 
-    candidates.sort(key=lambda x: (-x[0], x[1].get("name", "")))
-    best = candidates[0][1]
-    alternatives = [c[1] for c in candidates[1:6]]
-    return {
-        "exercise_id": best.get("exercise_id"),
-        "name": best.get("name", exercise_name),
-        "confidence": best.get("confidence", 0.8),
-        "alternatives": alternatives,
-    }
+    # 4. Слово из названия ВНУТРИ фразы пользователя
+    for ex in exercises_db:
+        name = ex.get("name") or ""
+        norm_name = _normalize_name(name)
+        if norm_name in norm_query:
+            return {
+                "exercise_id": ex.get("id"),
+                "name": name,
+                "confidence": 1.0,
+                "alternatives": [],
+            }
+
+    # Проверка по синонимам: подстрока
+    for ex in exercises_db:
+        name = ex.get("name") or ""
+        for syn in ex.get("synonyms") or []:
+            norm_syn = _normalize_name(str(syn))
+            if norm_query in norm_syn or norm_syn in norm_query:
+                return {
+                    "exercise_id": ex.get("id"),
+                    "name": name,
+                    "confidence": 1.0,
+                    "alternatives": [],
+                }
+
+    return {"exercise_id": None, "name": exercise_name, "confidence": 0.0, "alternatives": []}
 
 
 def convert_units(weight: float, unit: str) -> float:
@@ -315,7 +300,7 @@ async def parse_workout_message(
                 "weight": weight,
                 "comment": (s.get("comment") or "").strip() or None,
             })
-        match = await match_exercise(name, exercises_db) if exercises_db else {"exercise_id": None, "name": name, "confidence": 0.5, "alternatives": []}
+        match = match_exercise(name, exercises_db) if exercises_db else {"exercise_id": None, "name": name, "confidence": 0.5, "alternatives": []}
         exercises_out.append({
             "name": match.get("name") or name,
             "exercise_id": match.get("exercise_id"),

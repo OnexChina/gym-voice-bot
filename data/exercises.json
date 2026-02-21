@@ -275,7 +275,7 @@
   {
     "name": "жим гантелей сидя",
     "name_en": "dumbbell shoulder press seated",
-    "synonyms": ["жим гантелей сидя", "dumbbell press seated", "жим плечи сидя"],
+    "synonyms": ["жим гантелей сидя", "dumbbell press seated", "жим плечи сидя", "dumbbell sit", "jumbo dumbbell sit"],
     "muscle_groups": ["плечи", "трицепс"],
     "equipment": "гантели"
   },
@@ -422,7 +422,7 @@
   {
     "name": "скручивания на полу",
     "name_en": "crunch",
-    "synonyms": ["скручивания", "кранч", "crunch", "пресс лёжа"],
+    "synonyms": ["скручивания", "скручивания на полу", "кранч", "crunch", "пресс лёжа", "пресс скручивания"],
     "muscle_groups": ["пресс"],
     "equipment": "вес тела"
   },
@@ -968,7 +968,7 @@
   {
     "name": "скручивания на полу",
     "name_en": "floor crunch",
-    "synonyms": ["скручивания на коврике", "пресс на полу", "floor crunch"],
+    "synonyms": ["скручивания на коврике", "пресс на полу", "floor crunch", "пресс скручивания", "скручивания на полу"],
     "muscle_groups": ["пресс"],
     "equipment": "вес тела"
   },
