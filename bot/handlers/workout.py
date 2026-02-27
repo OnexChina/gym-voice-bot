@@ -344,7 +344,7 @@ async def handle_voice_during_workout(message: Message, state: FSMContext):
         await message.answer("Тренировка не найдена. Начни заново: 🏋️ Начать тренировку")
         return
 
-        parsed = await parse_workout_message(
+    parsed = await parse_workout_message(
         text=text,
         user_id=message.from_user.id,
         current_workout=workout,
