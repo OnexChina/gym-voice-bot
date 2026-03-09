@@ -16,7 +16,7 @@ from bot.database.crud import (
     get_or_create_user,
     get_user_programs,
 )
-from bot.services.analytics import format_weekly_stats
+from bot.services.analytics import format_period_stats, format_weekly_stats
 from bot.handlers.workout import WorkoutStates
 
 router = Router()
@@ -147,6 +147,38 @@ async def show_programs(message: Message):
     )
 
 
+def _stats_keyboard() -> InlineKeyboardMarkup:
+    """Клавиатура экрана статистики."""
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="📅 Выбрать период", callback_data="stats:period_choose")],
+        [InlineKeyboardButton(text="🗑 Очистить всю статистику", callback_data="stats:clear_ask")],
+    ])
+
+
+def _stats_period_keyboard() -> InlineKeyboardMarkup:
+    """Клавиатура выбора периода."""
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="Эта неделя", callback_data="stats:period:week:0"),
+            InlineKeyboardButton(text="Прошлая", callback_data="stats:period:week:1"),
+        ],
+        [
+            InlineKeyboardButton(text="2 нед. назад", callback_data="stats:period:week:2"),
+            InlineKeyboardButton(text="3 нед. назад", callback_data="stats:period:week:3"),
+            InlineKeyboardButton(text="4 нед. назад", callback_data="stats:period:week:4"),
+        ],
+        [
+            InlineKeyboardButton(text="Этот месяц", callback_data="stats:period:month:0"),
+            InlineKeyboardButton(text="Прошлый месяц", callback_data="stats:period:month:1"),
+        ],
+        [
+            InlineKeyboardButton(text="2 мес. назад", callback_data="stats:period:month:2"),
+            InlineKeyboardButton(text="3 мес. назад", callback_data="stats:period:month:3"),
+        ],
+        [InlineKeyboardButton(text="◀ Назад к сводке", callback_data="stats:back")],
+    ])
+
+
 @router.message(F.text == "📊 Статистика")
 async def show_stats(message: Message):
     """Статистика по неделям и рекорды 1ПМ."""
@@ -154,10 +186,7 @@ async def show_stats(message: Message):
         await get_or_create_user(session, message.from_user.id, message.from_user.username)
 
     text = await format_weekly_stats(message.from_user.id)
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🗑 Очистить всю статистику", callback_data="stats:clear_ask")],
-    ])
-    await message.answer(f"📊 Статистика\n\n{text}", reply_markup=keyboard)
+    await message.answer(f"📊 Статистика\n\n{text}", reply_markup=_stats_keyboard())
 
 
 @router.callback_query(F.data == "stats:clear_ask")
@@ -184,7 +213,58 @@ async def stats_clear_ask2(callback: CallbackQuery):
 
 @router.callback_query(F.data == "stats:clear_no")
 async def stats_clear_no(callback: CallbackQuery):
-    await callback.message.edit_text("Очистка отменена.")
+    """Отмена очистки — возврат к статистике."""
+    text = await format_weekly_stats(callback.from_user.id)
+    await callback.message.edit_text(
+        f"📊 Статистика\n\n{text}",
+        reply_markup=_stats_keyboard(),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "stats:period_choose")
+async def stats_period_choose(callback: CallbackQuery):
+    """Показать выбор периода."""
+    await callback.message.edit_text(
+        "📅 Выбери период для просмотра статистики:",
+        reply_markup=_stats_period_keyboard(),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "stats:back")
+async def stats_back(callback: CallbackQuery):
+    """Вернуться к основной сводке статистики."""
+    text = await format_weekly_stats(callback.from_user.id)
+    await callback.message.edit_text(
+        f"📊 Статистика\n\n{text}",
+        reply_markup=_stats_keyboard(),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("stats:period:"))
+async def stats_period_show(callback: CallbackQuery):
+    """Показать статистику за выбранный период."""
+    parts = callback.data.split(":")
+    if len(parts) != 4:
+        await callback.answer()
+        return
+    period_type = parts[2]  # week | month
+    try:
+        period_offset = int(parts[3])
+    except ValueError:
+        await callback.answer()
+        return
+    if period_type not in ("week", "month") or period_offset < 0:
+        await callback.answer()
+        return
+
+    text = await format_period_stats(callback.from_user.id, period_type, period_offset)
+    await callback.message.edit_text(
+        text,
+        reply_markup=_stats_period_keyboard(),
+    )
     await callback.answer()
 
 

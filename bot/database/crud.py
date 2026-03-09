@@ -806,6 +806,61 @@ async def get_week_comparison(user_id: int) -> dict:
     }
 
 
+async def get_period_stats(
+    user_id: int,
+    period_type: str,
+    period_offset: int,
+) -> dict:
+    """
+    Статистика за указанный период.
+    period_type: "week" | "month"
+    period_offset: 0=текущая, 1=прошлая, 2=2 назад, ...
+    Возвращает: workouts_count, total_volume_kg, exercises_count, start, end, period_label.
+    """
+    today = date.today()
+    if period_type == "week":
+        week_start = today - timedelta(days=today.weekday())
+        start = week_start - timedelta(weeks=period_offset)
+        end = start + timedelta(days=6) if period_offset > 0 else today
+    else:  # month
+        year, month = today.year, today.month
+        for _ in range(period_offset):
+            month -= 1
+            if month <= 0:
+                month += 12
+                year -= 1
+        start = date(year, month, 1)
+        if month == 12:
+            end = date(year, 12, 31)
+        else:
+            end = date(year, month + 1, 1) - timedelta(days=1)
+        end = min(end, today) if period_offset == 0 else end
+
+    async with get_session() as session:
+        stmt = (
+            select(Workout)
+            .where(
+                Workout.user_id == user_id,
+                Workout.date >= start,
+                Workout.date <= end,
+            )
+            .options(selectinload(Workout.workout_exercises))
+        )
+        r = await session.execute(stmt)
+        workouts = list(r.scalars().all())
+        total_vol = sum(float(w.total_volume_kg or 0) for w in workouts)
+        ex_count = sum(len(w.workout_exercises) for w in workouts)
+
+    return {
+        "workouts_count": len(workouts),
+        "total_volume_kg": total_vol,
+        "exercises_count": ex_count,
+        "start": start,
+        "end": end,
+        "period_type": period_type,
+    }
+
+
 # ----- Обратная совместимость: функции с session (для существующих вызовов) -----
 
 

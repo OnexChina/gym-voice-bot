@@ -10,6 +10,7 @@ from bot.database.crud import (
     calculate_workout_volume,
     get_exercise_by_id,
     get_exercise_history,
+    get_period_stats,
     get_user_records,
     get_user_workouts,
     get_user_1rm_records,
@@ -105,19 +106,17 @@ async def format_workout_summary(
         )
     if new_records:
         lines.append("")
-        lines.append("🚀 Новый рекорд!")
-        for r in new_records[:3]:  # не более 3 в сообщении
+        lines.append("🚀 Новые рекорды:")
+        for r in new_records:
             name = r.get("exercise_name", "?")
             val = r.get("value")
             rtype = r.get("record_type", "")
             if rtype == "max_weight" and val:
-                lines.append(f"{name}: {val:.0f} кг — лучший вес за всё время! 💪")
+                lines.append(f"  • {name}: {val:.0f} кг — лучший вес за всё время! 💪")
             elif rtype == "max_volume" and val:
-                lines.append(f"{name}: {_fmt_num(val)} кг объёма — рекорд! 💪")
+                lines.append(f"  • {name}: {_fmt_num(val)} кг объёма — рекорд объёма! 💪")
             elif rtype == "max_1rm" and val:
-                lines.append(f"{name}: расчётный 1RM {val:.0f} кг — рекорд! 💪")
-        if len(new_records) > 3:
-            lines.append(f"... и ещё {len(new_records) - 3} рекорд(ов)")
+                lines.append(f"  • {name}: расчётный 1RM {val:.0f} кг — рекорд 1ПМ! 💪")
     return "\n".join(lines)
 
 
@@ -491,3 +490,96 @@ async def format_weekly_stats(user_id: int) -> str:
         lines.append("  Пока нет записанных рекордов 1ПМ.")
 
     return "\n".join(lines).strip()
+
+
+def _period_label(period_type: str, start: date, end: date) -> str:
+    """Форматирует подпись периода: '17-23 фев' или 'Февраль 2026'."""
+    if period_type == "week":
+        month_s = MONTHS_SHORT[end.month] if end.month < len(MONTHS_SHORT) else str(end.month)
+        return f"{start.day}-{end.day} {month_s}"
+    else:
+        month_n = MONTHS_NOMINATIVE[end.month] if end.month < len(MONTHS_NOMINATIVE) else str(end.month)
+        return f"{month_n} {end.year}"
+
+
+async def format_period_stats(user_id: int, period_type: str, period_offset: int) -> str:
+    """
+    Статистика за выбранный период (неделя или месяц).
+    period_offset: 0=текущая, 1=прошлая, 2=2 назад, ...
+    """
+    data = await get_period_stats(user_id, period_type, period_offset)
+    label = _period_label(period_type, data["start"], data["end"])
+    type_label = "неделя" if period_type == "week" else "месяц"
+
+    workouts_count = data["workouts_count"]
+    total_vol = data["total_volume_kg"] or 0
+    ex_count = data["exercises_count"]
+
+    lines = [
+        f"📊 Статистика за {label}",
+        f"({type_label})",
+        "",
+        f"🏋️ Тренировок: {workouts_count}",
+        f"📦 Общий объём: {_fmt_num(total_vol)} кг",
+        f"🎯 Упражнений: {ex_count}",
+        "",
+    ]
+
+    if workouts_count > 0:
+        workouts = await get_user_workouts(
+            user_id,
+            start_date=data["start"],
+            end_date=data["end"],
+            limit=100,
+        )
+        exercise_volumes: dict[str, float] = defaultdict(float)
+        for w in workouts:
+            for we in w.workout_exercises or []:
+                name = we.exercise.name if we.exercise else "?"
+                exercise_volumes[name] += float(we.volume_kg or 0)
+        if exercise_volumes:
+            lines.append("Топ упражнений по объёму:")
+            for i, (ex_name, vol) in enumerate(
+                sorted(exercise_volumes.items(), key=lambda x: -x[1])[:7],
+                1,
+            ):
+                lines.append(f"  {i}. {ex_name} — {_fmt_num(vol)} кг")
+            lines.append("")
+
+    records_1rm = await get_user_1rm_records(user_id, limit=10)
+    lines.append("🏆 Твои рекорды (1ПМ):")
+    if records_1rm:
+        for r in records_1rm:
+            name = r.get("exercise_name") or "?"
+            val = r.get("value")
+            if val is not None:
+                lines.append(f"  🥇 {name}: {float(val):.0f} кг")
+    else:
+        lines.append("  Пока нет записанных рекордов.")
+    return "\n".join(lines).strip()
+
+
+def get_stats_period_keyboard() -> "InlineKeyboardMarkup":
+    """Клавиатура выбора периода для статистики."""
+    from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="Эта неделя", callback_data="stats:period:week:0"),
+            InlineKeyboardButton(text="Прошлая", callback_data="stats:period:week:1"),
+        ],
+        [
+            InlineKeyboardButton(text="2 нед. назад", callback_data="stats:period:week:2"),
+            InlineKeyboardButton(text="3 нед. назад", callback_data="stats:period:week:3"),
+            InlineKeyboardButton(text="4 нед. назад", callback_data="stats:period:week:4"),
+        ],
+        [
+            InlineKeyboardButton(text="Этот месяц", callback_data="stats:period:month:0"),
+            InlineKeyboardButton(text="Прошлый месяц", callback_data="stats:period:month:1"),
+        ],
+        [
+            InlineKeyboardButton(text="2 мес. назад", callback_data="stats:period:month:2"),
+            InlineKeyboardButton(text="3 мес. назад", callback_data="stats:period:month:3"),
+        ],
+        [InlineKeyboardButton(text="◀ Назад к сводке", callback_data="stats:back")],
+    ])

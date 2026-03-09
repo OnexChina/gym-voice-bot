@@ -130,8 +130,15 @@ def create_program_exercises_keyboard(
 # ----- Inline: подтверждение упражнения -----
 
 
-def confirm_exercise(exercise_name: str, sets_count: int, volume: float) -> InlineKeyboardMarkup:
-    """Подтверждение записанного упражнения: верно, удалить, исправить, комментарий."""
+def confirm_exercise(
+    exercise_name: str,
+    sets_count: int,
+    volume: float,
+    workout_exercise_id: int | None = None,
+) -> InlineKeyboardMarkup:
+    """Подтверждение записанного упражнения: верно, удалить, исправить, комментарий.
+    workout_exercise_id — ID для привязки комментария к этому упражнению."""
+    comment_data = f"add_comment:{workout_exercise_id}" if workout_exercise_id is not None else "add_comment"
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
@@ -140,7 +147,7 @@ def confirm_exercise(exercise_name: str, sets_count: int, volume: float) -> Inli
             ],
             [
                 InlineKeyboardButton(text="✏️ Исправить", callback_data="edit_last_exercise"),
-                InlineKeyboardButton(text="💬 Комментарий", callback_data="add_comment"),
+                InlineKeyboardButton(text="💬 Комментарий", callback_data=comment_data),
             ],
         ]
     )

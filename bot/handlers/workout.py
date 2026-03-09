@@ -35,6 +35,7 @@ class WorkoutStates(StatesGroup):
     active = State()
     waiting_exercise = State()
     waiting_exercise_name = State()  # Для ручного ввода названия упражнения
+    waiting_clarification_name = State()  # Уточнение названия после «Нет» на «Добавить как новое?»
     waiting_comment = State()  # Для ввода комментария
 
 
@@ -63,15 +64,14 @@ async def _process_parsed_workout(
     user_id: int,
 ) -> None:
     """Общая логика после парсинга: уточнение, сопоставление, сохранение, подтверждение."""
-    if parsed["clarification_needed"] and parsed.get("clarification_question"):
+    exercises_list = parsed.get("exercises") or []
+
+    # Уточнение только если GPT вообще не смог разобрать упражнения (пустой список)
+    if not exercises_list and parsed.get("clarification_needed") and parsed.get("clarification_question"):
         await message.answer(parsed["clarification_question"])
         return
 
-    exercises_db = await _exercises_db_with_ids(user_id)
-    workout_data = await state.get_data()
-    current_workout = workout_data.get("workout") or {}
-
-    if not parsed.get("exercises") or len(parsed["exercises"]) == 0:
+    if not exercises_list:
         await message.answer(
             "❌ Не смог разобрать упражнение из сообщения.\n\n"
             "Попробуй сказать проще, например:\n"
@@ -81,7 +81,11 @@ async def _process_parsed_workout(
         )
         return
 
-    for exercise_data in parsed["exercises"]:
+    exercises_db = await _exercises_db_with_ids(user_id)
+    workout_data = await state.get_data()
+    current_workout = workout_data.get("workout") or {}
+
+    for exercise_data in exercises_list:
         name = exercise_data.get("name") or "Упражнение"
         sets_list = exercise_data.get("sets") or []
 
@@ -120,6 +124,9 @@ async def _process_parsed_workout(
 
         async with get_session() as session:
             await add_workout_sets(session, workout_id, flat_sets, user_id=user_id)
+            last_we = await get_last_workout_exercise(session, workout_id)
+
+        we_id = last_we.id if last_we else None
 
         volume = 0.0
         for s in sets_list:
@@ -167,7 +174,9 @@ async def _process_parsed_workout(
         )
         await message.answer(
             text,
-            reply_markup=confirm_exercise(matched.get("name") or name, len(sets_list), volume),
+            reply_markup=confirm_exercise(
+                matched.get("name") or name, len(sets_list), volume, workout_exercise_id=we_id
+            ),
             parse_mode="HTML",
         )
         summary = await _format_workout_summary(workout_id)
@@ -468,6 +477,8 @@ async def on_add_exercise_yes(callback: CallbackQuery, state: FSMContext):
         })
     async with get_session() as session:
         await add_workout_sets(session, workout_id, flat_sets, user_id=callback.from_user.id)
+        last_we = await get_last_workout_exercise(session, workout_id)
+    we_id = last_we.id if last_we else None
     volume = 0.0
     for s in sets_list:
         r, w = s.get("reps"), s.get("weight") or s.get("weight_kg")
@@ -482,7 +493,11 @@ async def on_add_exercise_yes(callback: CallbackQuery, state: FSMContext):
         + "\n".join(lines)
         + (f"\n\n📊 Объём: {volume:.1f} кг" if volume else "")
     )
-    await callback.message.edit_text(text, reply_markup=confirm_exercise(name, len(sets_list), volume), parse_mode="HTML")
+    await callback.message.edit_text(
+        text,
+        reply_markup=confirm_exercise(name, len(sets_list), volume, workout_exercise_id=we_id),
+        parse_mode="HTML",
+    )
     summary = await _format_workout_summary(workout_id)
     if summary:
         await callback.message.answer(summary, parse_mode="HTML")
@@ -491,9 +506,18 @@ async def on_add_exercise_yes(callback: CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data == "add_exercise_no")
 async def on_add_exercise_no(callback: CallbackQuery, state: FSMContext):
-    """Пользователь отказался добавлять упражнение — просим уточнить название."""
-    await state.update_data(pending_unknown_exercise=None)
-    await callback.message.edit_text("Уточни название упражнения и напиши ещё раз.")
+    """Пользователь отказался — сохраняем подходы и ждём точное название (без GPT)."""
+    data = await state.get_data()
+    pending = data.get("pending_unknown_exercise") or {}
+    sets_list = pending.get("sets_list") or [{"reps": None, "weight": None}]
+    await state.update_data(
+        pending_unknown_exercise=None,
+        pending_clarification_sets=sets_list,
+    )
+    await state.set_state(WorkoutStates.waiting_clarification_name)
+    await callback.message.edit_text(
+        "Напиши точное название упражнения (без повторного парсинга):"
+    )
     await callback.answer()
 
 
@@ -554,26 +578,33 @@ async def on_edit_last_exercise(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
 
-@router.callback_query(F.data == "add_comment")
+@router.callback_query(F.data.startswith("add_comment"))
 async def on_add_comment(callback: CallbackQuery, state: FSMContext):
-    """Добавить комментарий к последнему упражнению."""
+    """Добавить комментарий к конкретному упражнению (ID из callback или последнее)."""
     workout_data = await state.get_data()
     workout_id = workout_data.get("workout", {}).get("id")
     if not workout_id:
         await callback.answer("❌ Тренировка не найдена", show_alert=True)
         return
-    
-    async with get_session() as session:
-        last_we = await get_last_workout_exercise(session, workout_id)
-        if not last_we:
-            await callback.answer("Нечего комментировать", show_alert=True)
-            return
-        
-        await state.update_data(pending_comment_we_id=last_we.id)
-    
+
+    we_id = None
+    if callback.data.startswith("add_comment:"):
+        try:
+            we_id = int(callback.data.split(":", 1)[1])
+        except (ValueError, IndexError):
+            pass
+    if we_id is None:
+        async with get_session() as session:
+            last_we = await get_last_workout_exercise(session, workout_id)
+            we_id = last_we.id if last_we else None
+    if not we_id:
+        await callback.answer("Нечего комментировать", show_alert=True)
+        return
+
+    await state.update_data(pending_comment_we_id=we_id)
     await state.set_state(WorkoutStates.waiting_comment)
     await callback.message.answer(
-        "💬 Напиши или скажи комментарий к упражнению:\n\n"
+        "💬 Напиши или скажи комментарий к этому упражнению:\n\n"
         "Например: «Тяжело», «Легко», «Хорошо пошло»"
     )
     await callback.answer()
@@ -608,6 +639,8 @@ async def on_exercise_selected(callback: CallbackQuery, state: FSMContext):
             flat_sets.append({"exercise_name": name, "reps": s.get("reps"), "weight_kg": w})
         async with get_session() as session:
             await add_workout_sets(session, workout_id, flat_sets, user_id=callback.from_user.id)
+            last_we = await get_last_workout_exercise(session, workout_id)
+        we_id = last_we.id if last_we else None
         volume = 0.0
         for s in sets_list:
             r, w = s.get("reps"), s.get("weight") or s.get("weight_kg")
@@ -618,7 +651,11 @@ async def on_exercise_selected(callback: CallbackQuery, state: FSMContext):
                     pass
         lines = [f"• {s.get('weight', s.get('weight_kg', '—'))} кг × {s.get('reps', '—')}" for s in sets_list]
         text = f"✅ Упражнение добавлено и подход записан!\n\n<b>{name}</b>\n" + "\n".join(lines) + (f"\n\n📊 Объём: {volume:.1f} кг" if volume else "")
-        await callback.message.edit_text(text, reply_markup=confirm_exercise(name, len(sets_list), volume), parse_mode="HTML")
+        await callback.message.edit_text(
+            text,
+            reply_markup=confirm_exercise(name, len(sets_list), volume, workout_exercise_id=we_id),
+            parse_mode="HTML",
+        )
         summary = await _format_workout_summary(workout_id)
         if summary:
             await callback.message.answer(summary, parse_mode="HTML")
@@ -666,7 +703,8 @@ async def on_exercise_selected(callback: CallbackQuery, state: FSMContext):
             
             async with get_session() as session:
                 await add_workout_sets(session, workout_id, flat_sets, user_id=callback.from_user.id)
-            
+                last_we = await get_last_workout_exercise(session, workout_id)
+            we_id = last_we.id if last_we else None
             volume = 0.0
             for s in sets_list:
                 r, w = s.get("reps"), s.get("weight")
@@ -675,12 +713,12 @@ async def on_exercise_selected(callback: CallbackQuery, state: FSMContext):
                         volume += float(w) * int(r)
                     except (TypeError, ValueError):
                         pass
-            
+
             lines = [f"• {s.get('weight', '—')} кг × {s.get('reps', '—')}" for s in sets_list]
             text = f"✅ Записал:\n\n<b>{exercise_name}</b>\n" + "\n".join(lines) + f"\n\n📊 Объём: {volume:.1f} кг"
             await callback.message.edit_text(
                 text,
-                reply_markup=confirm_exercise(exercise_name, len(sets_list), volume),
+                reply_markup=confirm_exercise(exercise_name, len(sets_list), volume, workout_exercise_id=we_id),
                 parse_mode="HTML",
             )
             summary = await _format_workout_summary(workout_id)
@@ -895,6 +933,76 @@ async def handle_text_during_workout(message: Message, state: FSMContext):
     )
 
 
+# ----- Уточнение названия (после «Нет» на «Добавить как новое?») — без GPT -----
+
+
+@router.message(F.text, WorkoutStates.waiting_clarification_name)
+@router.message(F.voice, WorkoutStates.waiting_clarification_name)
+async def handle_clarification_name(message: Message, state: FSMContext):
+    """Пользователь ввёл точное название — добавляем без повторного парсинга GPT."""
+    text = message.text or ""
+    if message.voice:
+        text = await transcribe_voice(message.voice.file_id, settings.telegram_bot_token)
+        if not text:
+            await message.answer("❌ Не смог распознать. Напиши название текстом.")
+            return
+        await message.answer(f"📝 Распознал: {text}")
+
+    name = (text or "").strip()
+    if not name:
+        await message.answer("Название не может быть пустым. Напиши упражнение:")
+        return
+
+    data = await state.get_data()
+    workout_id = (data.get("workout") or {}).get("id")
+    sets_list = data.get("pending_clarification_sets") or [{"reps": None, "weight": None}]
+    await state.update_data(pending_clarification_sets=None)
+    await state.set_state(WorkoutStates.active)
+
+    if not workout_id:
+        await message.answer("Тренировка не найдена. Начни заново.")
+        return
+
+    flat_sets = []
+    for s in sets_list:
+        w = s.get("weight") or s.get("weight_kg")
+        if w is not None and not isinstance(w, (int, float)):
+            try:
+                w = float(w)
+            except (TypeError, ValueError):
+                w = None
+        flat_sets.append({"exercise_name": name, "reps": s.get("reps"), "weight_kg": w})
+
+    async with get_session() as session:
+        await add_workout_sets(session, workout_id, flat_sets, user_id=message.from_user.id)
+        last_we = await get_last_workout_exercise(session, workout_id)
+    we_id = last_we.id if last_we else None
+
+    volume = 0.0
+    for s in sets_list:
+        r, w = s.get("reps"), s.get("weight") or s.get("weight_kg")
+        if r is not None and w is not None:
+            try:
+                volume += float(w) * int(r)
+            except (TypeError, ValueError):
+                pass
+
+    lines = [f"• {s.get('weight', s.get('weight_kg', '—'))} кг × {s.get('reps', '—')}" for s in sets_list]
+    text_msg = (
+        f"✅ Записал: <b>{name}</b>\n"
+        + "\n".join(lines)
+        + (f"\n\n📊 Объём: {volume:.1f} кг" if volume else "")
+    )
+    await message.answer(
+        text_msg,
+        reply_markup=confirm_exercise(name, len(sets_list), volume, workout_exercise_id=we_id),
+        parse_mode="HTML",
+    )
+    summary = await _format_workout_summary(workout_id)
+    if summary:
+        await message.answer(summary, parse_mode="HTML")
+
+
 # ----- Ручной ввод названия упражнения (после "Исправить") -----
 
 
@@ -939,7 +1047,8 @@ async def handle_manual_exercise_name(message: Message, state: FSMContext):
     
     async with get_session() as session:
         await add_workout_sets(session, workout_id, flat_sets, user_id=message.from_user.id)
-    
+        last_we = await get_last_workout_exercise(session, workout_id)
+    we_id = last_we.id if last_we else None
     volume = 0.0
     for s in sets_data:
         r, w = s.get("reps"), s.get("weight_kg")
@@ -948,7 +1057,7 @@ async def handle_manual_exercise_name(message: Message, state: FSMContext):
                 volume += float(w) * int(r)
             except (TypeError, ValueError):
                 pass
-    
+
     lines = [f"• {s.get('weight_kg', '—')} кг × {s.get('reps', '—')}" for s in sets_data]
     text_msg = (
         f"✅ Исправлено и записано:\n\n<b>{exercise_name}</b>\n"
@@ -957,7 +1066,7 @@ async def handle_manual_exercise_name(message: Message, state: FSMContext):
     )
     await message.answer(
         text_msg,
-        reply_markup=confirm_exercise(exercise_name, len(sets_data), volume),
+        reply_markup=confirm_exercise(exercise_name, len(sets_data), volume, workout_exercise_id=we_id),
         parse_mode="HTML",
     )
     summary = await _format_workout_summary(workout_id)
